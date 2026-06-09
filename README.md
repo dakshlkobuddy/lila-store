@@ -1,5 +1,7 @@
 # Lila &amp; Co. — Women's Wear Online Store
 
+React + Vite women's wear storefront with cart, checkout, admin dashboard, and order management.
+
 A working storefront + admin dashboard prototype, built with **React + Vite**.
 Single login (admin or customer), product catalog with size/colour options,
 cart, checkout, order management, photo upload, filters, WhatsApp ordering,
