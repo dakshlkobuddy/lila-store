@@ -17,7 +17,7 @@ export default function CartPage({ store }) {
           {cartDetailed.map((c) => {
             const atMax = c.qty >= (c.product?.stock ?? Infinity);
             return (
-              <div key={c.idx} className="ec-card" style={s.row}>
+              <div key={c.id} className="ec-card" style={s.row}>
                 <ProductImage product={c.product} className="" style={s.thumb} />
                 <div style={s.info}>
                   <h3 style={s.name}>{c.product.name}</h3>
@@ -26,9 +26,9 @@ export default function CartPage({ store }) {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
                   <div style={s.qtyWrap}>
-                    <button className="ec-btn ec-btn-ghost" style={s.qtyBtn} onClick={() => setQtyAt(c.idx, c.qty - 1)} disabled={c.qty <= 1}><Minus size={14} /></button>
+                    <button className="ec-btn ec-btn-ghost" style={s.qtyBtn} onClick={() => setQtyAt(c.id, c.qty - 1)} disabled={c.qty <= 1}><Minus size={14} /></button>
                     <span style={s.qty}>{c.qty}</span>
-                    <button className="ec-btn ec-btn-ghost" style={{ ...s.qtyBtn, opacity: atMax ? 0.4 : 1 }} onClick={() => setQtyAt(c.idx, c.qty + 1)} disabled={atMax}><Plus size={14} /></button>
+                    <button className="ec-btn ec-btn-ghost" style={{ ...s.qtyBtn, opacity: atMax ? 0.4 : 1 }} onClick={() => setQtyAt(c.id, c.qty + 1)} disabled={atMax}><Plus size={14} /></button>
                   </div>
                   {atMax && (
                     <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--gold)", fontWeight: 600 }}>
@@ -36,7 +36,7 @@ export default function CartPage({ store }) {
                     </div>
                   )}
                 </div>
-                <button className="ec-btn ec-btn-ghost" style={s.removeBtn} onClick={() => removeAt(c.idx)}><Trash2 size={16} /></button>
+                <button className="ec-btn ec-btn-ghost" style={s.removeBtn} onClick={() => removeAt(c.id)}><Trash2 size={16} /></button>
               </div>
             );
           })}

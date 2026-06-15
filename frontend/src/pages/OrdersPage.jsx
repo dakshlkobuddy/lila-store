@@ -4,7 +4,8 @@ import { s } from "./OrdersPage.styles.js";
 
 export default function OrdersPage({ store }) {
   const { orders, currentUser, go } = store;
-  const mine = orders.filter((o) => o.userId === currentUser?.id);
+  // Orders are already filtered by user_id in useStore.loadOrders() for non-admin
+  const mine = orders.filter((o) => o.user_id === currentUser?.id);
 
   return (
     <div style={s.page}>

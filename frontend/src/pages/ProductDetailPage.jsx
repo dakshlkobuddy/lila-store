@@ -57,7 +57,7 @@ function ProductDetail({ product, onAdd, onBack }) {
             <X size={22} />
           </button>
           <img
-            src={p.image || ""}
+            src={p.image_url || ""}
             alt={p.name}
             style={{ maxWidth: "92vw", maxHeight: "92vh", borderRadius: 16, objectFit: "contain" }}
             onClick={(e) => e.stopPropagation()}

@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { Check, X, Camera, Image as ImageIcon, Loader } from "lucide-react";
 import { CATEGORIES } from "../../constants.js";
 import { errBorder } from "../../lib/validation.js";
+import { validateImage } from "../../lib/imageValidation.js";
 import FieldError from "../FieldError.jsx";
 
 // ── Size presets per category ──────────────────────────────────
@@ -21,19 +22,22 @@ function getSizePresets(category) {
   return BRA_CATEGORIES.includes(category) ? BRA_SIZES : CLOTHING_SIZES;
 }
 
-// Admin form to add or edit a product, including photo capture/upload,
+// Admin form to add or edit a product, including photo upload to Supabase Storage,
 // size & colour options, and validation.
-export default function ProductForm({ initial, onSave, onCancel }) {
+export default function ProductForm({ initial, onSave, onCancel, onUploadImage, onDeleteImage }) {
   const [f, setF] = useState(() => ({
     sizes: [],
     colours: [],
-    ...(initial || { name: "", category: "", price: "", stock: "", image: "", description: "" }),
+    ...(initial
+      ? { ...initial, image_url: initial.image_url || "" }
+      : { name: "", category: "", price: "", stock: "", image_url: "", description: "", badge: "" }),
   }));
   const [sizeInput, setSizeInput] = useState("");
   const [colourInput, setColourInput] = useState("");
   const [errors, setErrors] = useState({});
   const [imageLoading, setImageLoading] = useState(false);
   const [imageError, setImageError] = useState("");
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
 
   const set = (k, v) => { setF((p) => ({ ...p, [k]: v })); setErrors((e) => ({ ...e, [k]: "" })); };
@@ -77,8 +81,59 @@ export default function ProductForm({ initial, onSave, onCancel }) {
     return Object.keys(e).length === 0;
   };
 
-  const submit = () => {
-    if (validate()) onSave({ ...f, name: f.name.trim(), price: Number(f.price), stock: Number(f.stock) });
+  const submit = async () => {
+    if (!validate() || saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        ...f,
+        name: f.name.trim(),
+        price: Number(f.price),
+        stock: Number(f.stock),
+        image_url: f.image_url || null,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ── Image upload to Supabase Storage ──
+  const handleFile = async (file) => {
+    if (!file) return;
+    if (fileRef.current) fileRef.current.value = "";
+
+    // Validate format and size
+    const validation = validateImage(file);
+    if (!validation.valid) {
+      setImageError(validation.error);
+      return;
+    }
+
+    setImageLoading(true);
+    setImageError("");
+
+    try {
+      // Delete old image if replacing
+      if (f.image_url && onDeleteImage) {
+        await onDeleteImage(f.image_url);
+      }
+
+      const publicUrl = await onUploadImage(file);
+      set("image_url", publicUrl);
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      setImageError("Upload failed: " + (err.message || "Please try again."));
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (f.image_url && onDeleteImage) {
+      try { await onDeleteImage(f.image_url); } catch (_e) { /* ignore */ }
+    }
+    set("image_url", "");
+    setImageError("");
   };
 
   const L = ({ children, required }) => (
@@ -113,70 +168,6 @@ export default function ProductForm({ initial, onSave, onCancel }) {
     border: "1px solid var(--line)",
   };
 
-  // ── Smart image processor ──
-  const MAX_INPUT_MB = 15;
-  const TARGET_PX = 600;
-  const MAX_OUTPUT_KB = 120;
-
-  const handleFile = (file) => {
-    if (!file) return;
-    if (fileRef.current) fileRef.current.value = "";
-
-    if (file.size > MAX_INPUT_MB * 1024 * 1024) {
-      setImageError(`Photo too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Please use a photo under ${MAX_INPUT_MB} MB.`);
-      return;
-    }
-
-    setImageLoading(true);
-    setImageError("");
-
-    const reader = new FileReader();
-    reader.onerror = () => { setImageLoading(false); setImageError("Could not read this file. Try another photo."); };
-
-    reader.onload = (ev) => {
-      const img = new window.Image();
-      img.onerror = () => { setImageLoading(false); setImageError("This file doesn't look like a valid image. Try a JPG or PNG."); };
-
-      img.onload = () => {
-        try {
-          const pad = Math.round(TARGET_PX * 0.04);
-          const box = TARGET_PX - pad * 2;
-          const scale = Math.min(box / img.width, box / img.height, 1);
-          const w = Math.round(img.width * scale);
-          const h = Math.round(img.height * scale);
-
-          const canvas = document.createElement("canvas");
-          canvas.width = TARGET_PX;
-          canvas.height = TARGET_PX;
-          const ctx = canvas.getContext("2d");
-          ctx.fillStyle = "#ffffff";
-          ctx.fillRect(0, 0, TARGET_PX, TARGET_PX);
-          if ("imageSmoothingQuality" in ctx) ctx.imageSmoothingQuality = "high";
-          ctx.drawImage(img, (TARGET_PX - w) / 2, (TARGET_PX - h) / 2, w, h);
-
-          const maxBase64Chars = Math.round(MAX_OUTPUT_KB * 1024 * 1.37);
-          let quality = 0.85;
-          let dataUrl = canvas.toDataURL("image/jpeg", quality);
-
-          while (dataUrl.length > maxBase64Chars && quality > 0.25) {
-            quality -= 0.1;
-            dataUrl = canvas.toDataURL("image/jpeg", Math.round(quality * 100) / 100);
-          }
-
-          set("image", dataUrl);
-          setImageLoading(false);
-        } catch (err) {
-          console.error("Image processing failed:", err);
-          try { set("image", ev.target.result); } catch (_e) { /* ignore */ }
-          setImageError("Photo was saved, but compression failed — it may be larger than usual.");
-          setImageLoading(false);
-        }
-      };
-      img.src = ev.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
-
   const sizePresets = getSizePresets(f.category);
   const isBraCategory = BRA_CATEGORIES.includes(f.category);
 
@@ -198,12 +189,12 @@ export default function ProductForm({ initial, onSave, onCancel }) {
           <FieldError msg={errors.name} />
         </div>
 
-        {/* Product photo */}
+        {/* Product photo — Supabase Storage */}
         <div style={{ gridColumn: "1 / -1" }}>
           <L>Product photo</L>
           <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ width: 88, height: 88, borderRadius: 12, border: "1px solid var(--line)", overflow: "hidden", flexShrink: 0, background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-              {f.image ? <img src={f.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImageIcon size={24} color="#B6A893" />}
+              {f.image_url ? <img src={f.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <ImageIcon size={24} color="#B6A893" />}
               {imageLoading && (
                 <div style={{ position: "absolute", inset: 0, background: "rgba(255,255,255,.8)", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 12 }}>
                   <Loader size={22} color="var(--accent)" style={{ animation: "ecSpin 1s linear infinite" }} />
@@ -212,14 +203,14 @@ export default function ProductForm({ initial, onSave, onCancel }) {
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
               <label className={"ec-btn ec-btn-primary" + (imageLoading ? " ec-btn-disabled" : "")} style={{ cursor: imageLoading ? "wait" : "pointer", opacity: imageLoading ? 0.6 : 1 }}>
-                <Camera size={16} /> {imageLoading ? "Processing…" : f.image ? "Change photo" : "Take / upload photo"}
-                <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{ display: "none" }} disabled={imageLoading} onChange={(e) => handleFile(e.target.files && e.target.files[0])} />
+                <Camera size={16} /> {imageLoading ? "Uploading…" : f.image_url ? "Change photo" : "Upload photo"}
+                <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.webp" style={{ display: "none" }} disabled={imageLoading} onChange={(e) => handleFile(e.target.files && e.target.files[0])} />
               </label>
-              {f.image && !imageLoading && <button type="button" className="ec-btn ec-btn-ghost" onClick={() => { set("image", ""); setImageError(""); }}>Remove</button>}
+              {f.image_url && !imageLoading && <button type="button" className="ec-btn ec-btn-ghost" onClick={handleRemoveImage}>Remove</button>}
             </div>
           </div>
           {imageError && <p style={{ fontSize: 12, color: "var(--danger)", marginTop: 8, fontWeight: 600 }}>{imageError}</p>}
-          <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 8 }}>Any photo works — phone camera, gallery, or screenshot. It's automatically resized, compressed, and fitted onto a clean white square.</p>
+          <p style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 8 }}>Accepted formats: JPG, PNG, WEBP. Maximum size: 5 MB.</p>
         </div>
 
         {/* Category */}
@@ -245,9 +236,10 @@ export default function ProductForm({ initial, onSave, onCancel }) {
             style={errBorder(errors.price)}
             type="number"
             min="0"
+            step="0.01"
             value={f.price}
             onChange={(e) => set("price", e.target.value)}
-            placeholder="799"
+            placeholder="799.00"
           />
           <FieldError msg={errors.price} />
         </div>
@@ -349,8 +341,10 @@ export default function ProductForm({ initial, onSave, onCancel }) {
       </p>
 
       <div style={{ display: "flex", gap: 10, marginTop: 14 }}>
-        <button className="ec-btn ec-btn-primary" onClick={submit}><Check size={16} />{f.id ? "Save changes" : "Add product"}</button>
-        <button className="ec-btn ec-btn-ghost" onClick={onCancel}>Cancel</button>
+        <button className="ec-btn ec-btn-primary" onClick={submit} disabled={saving} style={{ opacity: saving ? 0.7 : 1 }}>
+          {saving ? <><Loader size={16} style={{ animation: "ecSpin 1s linear infinite" }} /> Saving…</> : <><Check size={16} />{f.id ? "Save changes" : "Add product"}</>}
+        </button>
+        <button className="ec-btn ec-btn-ghost" onClick={onCancel} disabled={saving}>Cancel</button>
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ const INDIAN_STATES = [
 ];
 
 // Shipping details form with validation, used on the checkout page.
-export default function CheckoutForm({ user, total, onPlace }) {
+export default function CheckoutForm({ user, total, onPlace, busy }) {
   const [f, setF] = useState({ name: user?.name || "", phone: "", address: "", city: "", state: "", pincode: "" });
   const [errors, setErrors] = useState({});
   const set = (k, v) => { setF((p) => ({ ...p, [k]: v })); setErrors((e) => ({ ...e, [k]: "" })); };
@@ -77,8 +77,8 @@ export default function CheckoutForm({ user, total, onPlace }) {
       />
       <FieldError msg={errors.pincode} />
 
-      <button className="ec-btn ec-btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={place}>
-        <Truck size={16} /> Place order · {money(total)}
+      <button className="ec-btn ec-btn-primary" style={{ width: "100%", justifyContent: "center", opacity: busy ? 0.7 : 1 }} onClick={place} disabled={busy}>
+        <Truck size={16} /> {busy ? "Placing order…" : `Place order · ${money(total)}`}
       </button>
       <p style={{ textAlign: "center", fontSize: 12, color: "var(--ink-soft)", marginTop: 12 }}>Cash on delivery · No payment taken now</p>
     </div>

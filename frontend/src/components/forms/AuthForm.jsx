@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { ShoppingBag, Eye, EyeOff } from "lucide-react";
+import { ShoppingBag, Eye, EyeOff, Loader } from "lucide-react";
 import { BRAND } from "../../constants.js";
 import { isEmail, errBorder } from "../../lib/validation.js";
 import FieldError from "../FieldError.jsx";
 
 // One login screen for both admin and customers. The role is detected
-// from the account on sign-in. Registering creates a customer account
-// and then switches to the sign-in form (no auto-login).
+// from the profile after sign-in. Registering creates a customer account
+// via Supabase Auth and then switches to the sign-in form.
 export default function AuthForm({ onLogin, onRegister }) {
   const [mode, setMode] = useState("login");
   const [f, setF] = useState({ name: "", email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPwd, setShowPwd] = useState(false);
+  const [busy, setBusy] = useState(false);
   const set = (k, v) => { setF((p) => ({ ...p, [k]: v })); setErrors((e) => ({ ...e, [k]: "" })); };
 
   const validate = () => {
@@ -25,11 +26,27 @@ export default function AuthForm({ onLogin, onRegister }) {
     return Object.keys(e).length === 0;
   };
 
-  const submit = () => {
-    if (!validate()) return;
-    if (mode === "login") { onLogin(f.email, f.password); return; }
-    const ok = onRegister(f.name, f.email, f.password);
-    if (ok) { setMode("login"); setErrors({}); setF({ name: "", email: f.email.trim(), password: "" }); }
+  const submit = async () => {
+    if (!validate() || busy) return;
+    setBusy(true);
+
+    try {
+      if (mode === "login") {
+        const result = await onLogin(f.email, f.password);
+        if (result?.error) {
+          // error already shown via toast in useStore
+        }
+      } else {
+        const result = await onRegister(f.name, f.email, f.password);
+        if (!result?.error) {
+          setMode("login");
+          setErrors({});
+          setF({ name: "", email: f.email.trim(), password: "" });
+        }
+      }
+    } finally {
+      setBusy(false);
+    }
   };
 
   const switchMode = () => { setMode(mode === "login" ? "register" : "login"); setErrors({}); };
@@ -46,11 +63,11 @@ export default function AuthForm({ onLogin, onRegister }) {
         <h2 className="ec-disp" style={{ fontSize: 24, marginBottom: 6 }}>{mode === "login" ? "Sign in" : "Create an account"}</h2>
         <p style={{ color: "var(--ink-soft)", fontSize: 14, marginBottom: 22 }}>{mode === "login" ? "Enter your credentials to continue." : "It only takes a moment."}</p>
         {mode === "register" && <>
-          <input className="ec-input" style={{ ...errBorder(errors.name) }} placeholder="Full name" value={f.name} onChange={(e) => set("name", e.target.value)} />
+          <input className="ec-input" style={{ ...errBorder(errors.name) }} placeholder="Full name" value={f.name} onChange={(e) => set("name", e.target.value)} disabled={busy} />
           <FieldError msg={errors.name} />
           {!errors.name && <div style={{ height: 12 }} />}
         </>}
-        <input className="ec-input" style={{ ...errBorder(errors.email) }} placeholder="Email" value={f.email} onChange={(e) => set("email", e.target.value)} />
+        <input className="ec-input" style={{ ...errBorder(errors.email) }} placeholder="Email" value={f.email} onChange={(e) => set("email", e.target.value)} disabled={busy} />
         <FieldError msg={errors.email} />
         {!errors.email && <div style={{ height: 12 }} />}
         <div style={{ position: "relative" }}>
@@ -62,6 +79,7 @@ export default function AuthForm({ onLogin, onRegister }) {
             value={f.password}
             onChange={(e) => set("password", e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
+            disabled={busy}
           />
           <button
             type="button"
@@ -87,18 +105,20 @@ export default function AuthForm({ onLogin, onRegister }) {
         </div>
         <FieldError msg={errors.password} />
         {!errors.password && <div style={{ height: 18 }} />}
-        <button className="ec-btn ec-btn-primary" style={{ width: "100%", justifyContent: "center" }} onClick={submit}>{mode === "login" ? "Sign in" : "Create account"}</button>
+        <button
+          className="ec-btn ec-btn-primary"
+          style={{ width: "100%", justifyContent: "center", opacity: busy ? 0.7 : 1 }}
+          onClick={submit}
+          disabled={busy}
+        >
+          {busy ? <><Loader size={16} style={{ animation: "ecSpin 1s linear infinite" }} /> Please wait…</> : mode === "login" ? "Sign in" : "Create account"}
+        </button>
         <p style={{ textAlign: "center", fontSize: 14, color: "var(--ink-soft)", marginTop: 18 }}>
           {mode === "login" ? "New customer? " : "Already have an account? "}
           <span className="ec-link" style={{ color: "var(--accent)", fontWeight: 600 }} onClick={switchMode}>
             {mode === "login" ? "Create an account" : "Sign in"}
           </span>
         </p>
-      </div>
-      <div className="ec-card" style={{ padding: "14px 18px", marginTop: 14, fontSize: 13, color: "var(--ink-soft)", background: "var(--bg2)", lineHeight: 1.6 }}>
-        <strong style={{ color: "var(--ink)" }}>Try the demo</strong><br />
-        Admin: admin@store.com / admin123<br />
-        Or register above as a new customer.
       </div>
     </div>
   );

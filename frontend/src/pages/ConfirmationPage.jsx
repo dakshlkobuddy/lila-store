@@ -6,6 +6,8 @@ export default function ConfirmationPage({ store }) {
   const { lastOrder, go } = store;
   if (!lastOrder) return null;
 
+  const items = lastOrder.order_items || [];
+
   return (
     <div style={s.page}>
       <div className="ec-card" style={s.card}>
@@ -15,9 +17,9 @@ export default function ConfirmationPage({ store }) {
         <p style={s.note}>We'll contact you on WhatsApp once your order is ready to ship.</p>
       </div>
       <div className="ec-card" style={s.summary}>
-        {lastOrder.items.map((i, k) => (
+        {items.map((i, k) => (
           <div key={k} style={s.line}>
-            <span>{i.name}{[i.size, i.colour].filter(Boolean).length ? ` (${[i.size, i.colour].filter(Boolean).join(" · ")})` : ""} × {i.qty}</span><span>{money(i.price * i.qty)}</span>
+            <span>{i.product_name}{[i.size, i.colour].filter(Boolean).length ? ` (${[i.size, i.colour].filter(Boolean).join(" · ")})` : ""} × {i.quantity}</span><span>{money(i.price * i.quantity)}</span>
           </div>
         ))}
         <div style={s.totalRow}>

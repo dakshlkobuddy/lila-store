@@ -6,6 +6,7 @@ import { CheckCircle2, Circle, Clock } from "lucide-react";
 export default function OrderCard({ o }) {
   const activeIdx = STATUS_FLOW.indexOf(o.status);
   const isCancelled = o.status === "Cancelled";
+  const items = o.order_items || [];
 
   return (
     <div className="ec-card" style={{ padding: 20, marginBottom: 16 }}>
@@ -14,7 +15,7 @@ export default function OrderCard({ o }) {
         <div>
           <strong style={{ fontSize: 15 }}>{o.id}</strong>
           <div style={{ fontSize: 12, color: "var(--ink-soft)", marginTop: 2 }}>
-            {new Date(o.createdAt).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+            {new Date(o.created_at).toLocaleDateString("en-IN", { dateStyle: "medium" })}
           </div>
         </div>
         <span style={{
@@ -29,8 +30,8 @@ export default function OrderCard({ o }) {
 
       {/* Items */}
       <div style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 14, lineHeight: 1.6 }}>
-        {o.items.map((i) =>
-          `${i.name}${[i.size, i.colour].filter(Boolean).length ? " (" + [i.size, i.colour].filter(Boolean).join(" · ") + ")" : ""} ×${i.qty}`
+        {items.map((i) =>
+          `${i.product_name}${[i.size, i.colour].filter(Boolean).length ? " (" + [i.size, i.colour].filter(Boolean).join(" · ") + ")" : ""} ×${i.quantity}`
         ).join("  •  ")}
       </div>
 
@@ -72,7 +73,7 @@ export default function OrderCard({ o }) {
       {/* Total */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
         <span style={{ fontSize: 13, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 5 }}>
-          <Clock size={13} /> Placed {new Date(o.createdAt).toLocaleTimeString("en-IN", { timeStyle: "short" })}
+          <Clock size={13} /> Placed {new Date(o.created_at).toLocaleTimeString("en-IN", { timeStyle: "short" })}
         </span>
         <span style={{ fontWeight: 700, fontSize: 15 }}>{money(o.total)}</span>
       </div>

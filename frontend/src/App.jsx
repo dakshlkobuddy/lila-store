@@ -32,7 +32,25 @@ function CurrentPage({ store }) {
 
 export default function App() {
   const store = useStore();
-  const { currentUser, isAdmin, toast, login, register } = store;
+  const { currentUser, isAdmin, toast, login, register, loading } = store;
+
+  // Show a loading indicator while checking auth session
+  if (loading) {
+    return (
+      <div className="ec-root">
+        <GlobalStyles />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
+          <div style={{ textAlign: "center", color: "var(--ink-soft)" }}>
+            <div style={{
+              width: 40, height: 40, border: "3px solid var(--line)", borderTopColor: "var(--accent)",
+              borderRadius: "50%", animation: "ecSpin 0.8s linear infinite", margin: "0 auto 16px",
+            }} />
+            <p style={{ fontSize: 14, fontWeight: 500 }}>Loading…</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="ec-root">

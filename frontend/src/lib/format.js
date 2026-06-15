@@ -12,11 +12,14 @@ export const waLink = (text) => "https://wa.me/" + WHATSAPP_NUMBER + "?text=" + 
 // Message used by the cart's "Order on WhatsApp" button.
 export const cartWhatsAppMessage = (lines, total) =>
   `Hi ${BRAND}! I'd like to order:\n` +
-  lines.map((c) => `• ${c.product.name}${variantLabel(c) ? ` (${variantLabel(c)})` : ""} ×${c.qty} — ${money(c.product.price * c.qty)}`).join("\n") +
+  lines.map((c) => `• ${c.product.name}${variantLabel(c) ? ` (${variantLabel(c)})` : ""} ×${c.qty} — ${money(Number(c.product.price) * c.qty)}`).join("\n") +
   `\n\nTotal: ${money(total)}`;
 
 // Message used by the order confirmation's WhatsApp button.
-export const orderWhatsAppMessage = (o) =>
-  `Hi ${BRAND}! Here are my order details (${o.id}):\n` +
-  o.items.map((i) => `• ${i.name}${variantLabel(i) ? ` (${variantLabel(i)})` : ""} ×${i.qty} — ${money(i.price * i.qty)}`).join("\n") +
-  `\n\nTotal: ${money(o.total)}\nName: ${o.customer}\nAddress: ${o.shipping.address}, ${o.shipping.city}${o.shipping.pincode ? " - " + o.shipping.pincode : ""}\nPhone: ${o.shipping.phone}`;
+// Supports normalized order_items (product_name, quantity) from Supabase.
+export const orderWhatsAppMessage = (o) => {
+  const items = o.order_items || [];
+  return `Hi ${BRAND}! Here are my order details (${o.id}):\n` +
+    items.map((i) => `• ${i.product_name}${variantLabel(i) ? ` (${variantLabel(i)})` : ""} ×${i.quantity} — ${money(i.price * i.quantity)}`).join("\n") +
+    `\n\nTotal: ${money(o.total)}\nName: ${o.customer}\nAddress: ${o.shipping?.address}, ${o.shipping?.city}${o.shipping?.pincode ? " - " + o.shipping.pincode : ""}\nPhone: ${o.shipping?.phone}`;
+};

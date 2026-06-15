@@ -32,9 +32,10 @@ You should see version numbers.
 1. Unzip this folder somewhere you'll find it (e.g. Desktop).
 2. Open the folder in VS Code: **File → Open Folder…** → choose the `lila-store` folder.
 3. Open the built-in terminal: **Terminal → New Terminal**.
-4. Install the dependencies (only needed the first time):
+4. Go into the frontend app and install the dependencies (only needed the first time):
 
    ```bash
+   cd frontend
    npm install
    ```
 
@@ -68,10 +69,10 @@ There is **one login page**. It detects the role from the account:
   same browser/computer. Clearing browser data, or opening in a different browser,
   starts fresh.
 - **Reset the demo data:** Admin Dashboard → top-right **"Reset demo data"**.
-- **WhatsApp number:** open `src/App.jsx` and change the line
+- **WhatsApp number:** open `frontend/src/constants.js` and change the line
   `const WHATSAPP_NUMBER = "919580023800";` to your number
   (country code + number, no `+`, no spaces).
-- **Store name / tagline / categories:** also near the top of `src/App.jsx`
+- **Store name / tagline / categories:** also in `frontend/src/constants.js`
   (`BRAND`, `TAGLINE`, `CATEGORIES`).
 
 ---
@@ -79,11 +80,12 @@ There is **one login page**. It detects the role from the account:
 ## 5. Build for hosting later
 
 ```bash
+cd frontend
 npm run build      # creates an optimized site in the /dist folder
 npm run preview    # preview that build locally
 ```
 
-The `/dist` folder can be uploaded to any static host (Netlify, Vercel, etc.).
+The `frontend/dist` folder can be uploaded to any static host (Netlify, Vercel, etc.).
 
 ---
 
@@ -93,57 +95,35 @@ Everything is split into small, focused files so each part is easy to find and d
 
 ```
 lila-store/
-├─ index.html              # page shell
-├─ package.json            # dependencies & scripts
-├─ vite.config.js          # build/dev config
-└─ src/
-   ├─ main.jsx             # React entry point
-   ├─ index.css            # base styles
-   ├─ App.jsx              # layout + routing (decides which page shows)
-   ├─ constants.js         # ⭐ brand, categories, WhatsApp number, colours
-   │
-   ├─ store/
-   │  └─ useStore.js       # ⭐ ALL shared logic & data (state + actions)
-   │
-   ├─ data/
-   │  └─ seed.js           # starter products + placeholder illustrations
-   │
-   ├─ lib/                 # small helpers
-   │  ├─ storage.js        # save/load (localStorage)
-   │  ├─ validation.js     # email / phone / PIN checks
-   │  ├─ format.js         # ₹ money + WhatsApp message text
-   │  └─ ui.js             # layout style helpers
-   │
-   ├─ styles/
-   │  └─ GlobalStyles.jsx  # ⭐ all CSS (theme colours, buttons, responsive)
-   │
-   ├─ components/          # reusable UI pieces
-   │  ├─ Header.jsx  Footer.jsx  Toast.jsx  WhatsAppButton.jsx
-   │  ├─ ProductImage.jsx  StockBadge.jsx  Badge.jsx  Empty.jsx
-   │  ├─ Stat.jsx  OrderCard.jsx  Pill.jsx  FieldError.jsx
-   │  └─ forms/
-   │     ├─ AuthForm.jsx       # login / register
-   │     ├─ ProductForm.jsx    # admin add/edit product
-   │     └─ CheckoutForm.jsx   # shipping details
-   │
-   └─ pages/               # one file per screen + its own styles
-      ├─ HomePage.jsx / HomePage.styles.js           # storefront grid + filters
-      ├─ ProductDetailPage.jsx / .styles.js          # single product + size/colour
-      ├─ CartPage.jsx / .styles.js
-      ├─ CheckoutPage.jsx / .styles.js
-      ├─ OrdersPage.jsx / .styles.js
-      ├─ ConfirmationPage.jsx / .styles.js
-      └─ AdminPage.jsx / .styles.js                  # dashboard: overview / products / orders
+├─ README.md               # repo guide
+├─ .gitignore              # shared ignore rules
+└─ frontend/               # React + Vite storefront app
+   ├─ index.html           # page shell
+   ├─ package.json         # dependencies & scripts
+   ├─ vite.config.js       # build/dev config
+   ├─ e2e-test.js          # Playwright smoke test
+   ├─ debug-login.js       # login debugging helper
+   └─ src/
+      ├─ main.jsx          # React entry point
+      ├─ index.css         # base styles
+      ├─ App.jsx           # layout + routing
+      ├─ constants.js      # brand, categories, WhatsApp number, colours
+      ├─ store/            # shared state + actions
+      ├─ data/             # starter products
+      ├─ lib/              # helpers
+      ├─ styles/           # global styles
+      ├─ components/       # reusable UI pieces
+      └─ pages/            # screen components + page styles
 ```
 
 ### Where to change things (quick guide)
 
-- **Store name, categories, WhatsApp number, colours** → `src/constants.js`
-- **A page's layout/markup & behaviour** → `src/pages/<Page>.jsx`
-- **A page's own styling** → `src/pages/<Page>.styles.js` (each page has one)
-- **Shared logic** (cart, login, orders, saving data) → `src/store/useStore.js`
-- **Global theme** (colour variables, fonts, button styles, mobile rules) → `src/styles/GlobalStyles.jsx`
-- **Starter products** → `src/data/seed.js` (then bump `SEED_VERSION` in `constants.js`)
+- **Store name, categories, WhatsApp number, colours** → `frontend/src/constants.js`
+- **A page's layout/markup & behaviour** → `frontend/src/pages/<Page>.jsx`
+- **A page's own styling** → `frontend/src/pages/<Page>.styles.js` (each page has one)
+- **Shared logic** (cart, login, orders, saving data) → `frontend/src/store/useStore.js`
+- **Global theme** (colour variables, fonts, button styles, mobile rules) → `frontend/src/styles/GlobalStyles.jsx`
+- **Starter products** → `frontend/src/data/seed.js` (then bump `SEED_VERSION` in `frontend/src/constants.js`)
 
 Each page imports its styles as `s` (e.g. `style={s.heading}`), so the markup
 stays clean and all of a page's styling lives in one place next to it.
