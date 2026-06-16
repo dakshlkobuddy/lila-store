@@ -56,7 +56,13 @@ export default function useStore() {
         if (cancelled) return;
         if (session?.user) {
           const profile = await fetchProfile(session.user.id);
-          if (!cancelled) setCurrentUser(profile);
+          if (!cancelled) {
+            setCurrentUser(profile);
+            // Auto-redirect admin to dashboard on sign-in
+            if (_event === "SIGNED_IN" && profile?.role === "admin") {
+              setRoute({ name: "admin" });
+            }
+          }
         } else {
           if (!cancelled) setCurrentUser(null);
         }
@@ -289,7 +295,7 @@ export default function useStore() {
 
   // ── Auth actions ──────────────────────────────────────────
   const login = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -297,6 +303,15 @@ export default function useStore() {
     if (error) {
       notify(error.message || "Invalid email or password", "warn");
       return { error };
+    }
+
+    // Fetch profile to know the role for redirect
+    // (onAuthStateChange will also fire, but we redirect here for
+    // immediate UX — no extra round-trip delay visible to user)
+    const profile = await fetchProfile(data.user.id);
+    setCurrentUser(profile);
+    if (profile?.role === "admin") {
+      setRoute({ name: "admin" });
     }
 
     notify("Welcome back!");
