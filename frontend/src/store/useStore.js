@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabaseClient.js";
+import { BRAND } from "../constants.js";
+import { loadRazorpayScript, openRazorpayCheckout } from "../lib/razorpay.js";
 
 // All app state and Supabase-backed actions live here.
 // Pages/components receive the returned object as `store`.
@@ -366,6 +368,9 @@ export default function useStore() {
     if (!error && data) setOrders(data);
   };
 
+  // ── COD flow ─────────────────────────────────────────────
+  // Calls place_order() RPC directly with payment_status = 'cod'.
+  // No payment gateway involved — customer pays on delivery.
   const placeOrder = async (shipping) => {
     if (!currentUser) return;
 
@@ -378,47 +383,194 @@ export default function useStore() {
       colour: c.colour || "",
     }));
 
-    const orderId = "ORD-" + Date.now().toString().slice(-6);
+    // Collision-safe order ID: base-36 timestamp + 5 random chars
+    const ts  = Date.now().toString(36).toUpperCase();
+    const rnd = Math.random().toString(36).slice(2, 7).toUpperCase();
+    const orderId = `ORD-${ts}-${rnd}`;
 
     const { data, error } = await supabase.rpc("place_order", {
-      p_order_id: orderId,
-      p_items: items,
-      p_shipping: shipping,
+      p_order_id:       orderId,
+      p_items:          items,
+      p_shipping:       shipping,
+      p_payment_status: "cod",  // explicit: cash on delivery
     });
 
     if (error) {
-      // Extract meaningful error from Supabase/PostgreSQL
       const msg = error.message || "Order failed";
       notify(msg, "warn");
       return { error };
     }
 
-    // The RPC returns { success, order_id, total, customer_name }
-    // Use the server-computed total for the confirmation page.
-    const serverTotal = data?.total ?? cartTotal;
-    const serverCustomer = data?.customer_name ?? currentUser.name;
+    const serverTotal    = data?.total          ?? cartTotal;
+    const serverCustomer = data?.customer_name  ?? currentUser.name;
 
-    // Build lastOrder for confirmation page — reload order_items from DB
-    // for the snapshot (server wrote authoritative name + price).
     setLastOrder({
-      id: orderId,
-      customer: serverCustomer,
-      order_items: cartDetailed.map((c) => ({
+      id:           orderId,
+      customer:     serverCustomer,
+      order_items:  cartDetailed.map((c) => ({
         product_name: c.product.name,
-        price: Number(c.product.price),
-        quantity: c.qty,
-        size: c.size || "",
-        colour: c.colour || "",
+        price:        Number(c.product.price),
+        quantity:     c.qty,
+        size:         c.size   || "",
+        colour:       c.colour || "",
       })),
-      total: serverTotal,
+      total:         serverTotal,
       shipping,
+      paymentMethod: "cod",
     });
 
     setCart([]);
     await loadProducts();
     await loadOrders();
     go("confirmation");
-    notify("Order placed successfully!");
+    notify("Order placed! Pay on delivery.");
+    return { error: null };
+  };
+
+  // ── Razorpay online payment flow ──────────────────────────
+  // Step-by-step:
+  //   1. Load Razorpay SDK (lazy, cached)
+  //   2. Call create-razorpay-order Edge Function → gets { internal_order_id,
+  //      razorpay_order_id, amount_paise, key_id } (server computes total)
+  //   3. Open Razorpay modal — user pays
+  //   4. Call verify-and-place-order Edge Function → HMAC-SHA256 verification
+  //      of Razorpay's signature, then place_order() RPC with payment_status='paid'
+  //   5. Show confirmation page
+  const placeOrderOnline = async (shipping) => {
+    if (!currentUser) return;
+
+    const items = cartDetailed.map((c) => ({
+      product_id: c.product_id,
+      quantity:   c.qty,
+      size:       c.size   || "",
+      colour:     c.colour || "",
+    }));
+
+    // ── Step 1: Load Razorpay checkout SDK ───────────────────
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      notify("Could not load payment gateway. Check your connection and try again.", "warn");
+      return { error: { message: "Razorpay script failed to load" } };
+    }
+
+    // ── Step 2: Get user JWT for Edge Function auth ──────────
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      notify("Session expired. Please sign in again.", "warn");
+      return { error: { message: "No active session" } };
+    }
+
+    const fnBase = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1`;
+    const headers = {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${session.access_token}`,
+    };
+
+    // ── Step 3: Create Razorpay order (server computes total) ─
+    let createData;
+    try {
+      const createRes = await fetch(`${fnBase}/create-razorpay-order`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ items }),
+      });
+      createData = await createRes.json();
+      if (!createRes.ok) {
+        notify(createData.error || "Payment setup failed. Please try again.", "warn");
+        return { error: createData };
+      }
+    } catch (networkErr) {
+      notify("Network error while setting up payment. Please try again.", "warn");
+      return { error: { message: networkErr.message } };
+    }
+
+    const { internal_order_id, razorpay_order_id, amount_paise, key_id } = createData;
+
+    // ── Step 4: Open Razorpay modal ───────────────────────────
+    let paymentResult;
+    try {
+      paymentResult = await openRazorpayCheckout({
+        key:         key_id,           // public key — safe in browser
+        amount:      amount_paise,     // in paise (₹1 = 100 paise)
+        currency:    "INR",
+        name:        BRAND,
+        description: `Order ${internal_order_id}`,
+        order_id:    razorpay_order_id,
+        prefill: {
+          name:    shipping.name,
+          contact: shipping.phone,
+        },
+        theme: { color: "#5E7B5A" },  // sage green — matches brand
+      });
+    } catch (err) {
+      if (err.message === "Payment cancelled") {
+        notify("Payment cancelled.", "warn");
+      } else {
+        notify(err.message || "Payment failed. Please try again.", "warn");
+      }
+      return { error: { message: err.message } };
+    }
+
+    // ── Step 5: Verify payment + place order (server-side) ────
+    // Server verifies HMAC-SHA256 signature before creating the order.
+    let verifyData;
+    try {
+      const verifyRes = await fetch(`${fnBase}/verify-and-place-order`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          razorpay_payment_id: paymentResult.razorpay_payment_id,
+          razorpay_order_id:   paymentResult.razorpay_order_id,
+          razorpay_signature:  paymentResult.razorpay_signature,
+          internal_order_id,
+          items,
+          shipping,
+        }),
+      });
+      verifyData = await verifyRes.json();
+      if (!verifyRes.ok) {
+        // Payment went through but order creation failed (e.g. stock just ran out).
+        // The user's money is still safe — they should contact support.
+        notify(
+          verifyData.error ||
+          "Order could not be placed. Your payment is safe — please contact support.",
+          "warn"
+        );
+        return { error: verifyData };
+      }
+    } catch (networkErr) {
+      notify(
+        "Network error after payment. Your payment was received — please contact support with your payment ID.",
+        "warn"
+      );
+      return { error: { message: networkErr.message } };
+    }
+
+    // ── Step 6: Update UI ─────────────────────────────────────
+    const serverTotal    = verifyData?.total         ?? cartTotal;
+    const serverCustomer = verifyData?.customer_name ?? currentUser.name;
+
+    setLastOrder({
+      id:          internal_order_id,
+      customer:    serverCustomer,
+      order_items: cartDetailed.map((c) => ({
+        product_name: c.product.name,
+        price:        Number(c.product.price),
+        quantity:     c.qty,
+        size:         c.size   || "",
+        colour:       c.colour || "",
+      })),
+      total:         serverTotal,
+      shipping,
+      paymentMethod: "online",
+      paymentId:     paymentResult.razorpay_payment_id,
+    });
+
+    setCart([]);
+    await loadProducts();
+    await loadOrders();
+    go("confirmation");
+    notify("Payment successful! Order placed.");
     return { error: null };
   };
 
@@ -472,7 +624,7 @@ export default function useStore() {
     revenue, lowStock, outStock, priceCeiling, priceCap,
     // actions
     go, notify, addToCart, setQtyAt, removeAt,
-    login, register, logout, placeOrder,
+    login, register, logout, placeOrder, placeOrderOnline,
     saveProduct, toggleProduct, setOrderStatus,
     uploadProductImage, deleteProductImage,
     loadProducts, loadCart, loadOrders,
