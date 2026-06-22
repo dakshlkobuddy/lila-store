@@ -23,6 +23,17 @@ export default function useStore() {
   const [lastOrder, setLastOrder] = useState(null);
   const [sort, setSort] = useState("featured");
   const [inStockOnly, setInStockOnly] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    return localStorage.getItem("theme") === "dark";
+  });
+
+  const toggleDark = useCallback(() => {
+    setIsDark((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  }, []);
   const [maxPrice, setMaxPrice] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -615,7 +626,7 @@ export default function useStore() {
     // state
     products, orders, cart, currentUser, loading, route, toast,
     query, cat, menuOpen, adminTab, editingProduct, showForm, lastOrder,
-    sort, inStockOnly, maxPrice, showFilters,
+    sort, inStockOnly, maxPrice, showFilters, isDark,
     // setters
     setQuery, setCat, setMenuOpen, setAdminTab, setEditingProduct, setShowForm,
     setSort, setInStockOnly, setMaxPrice, setShowFilters,
@@ -625,7 +636,7 @@ export default function useStore() {
     // actions
     go, notify, addToCart, setQtyAt, removeAt,
     login, register, logout, placeOrder, placeOrderOnline,
-    saveProduct, toggleProduct, setOrderStatus,
+    saveProduct, toggleProduct, setOrderStatus, toggleDark,
     uploadProductImage, deleteProductImage,
     loadProducts, loadCart, loadOrders,
   };

@@ -32,12 +32,12 @@ function CurrentPage({ store }) {
 
 export default function App() {
   const store = useStore();
-  const { currentUser, isAdmin, toast, login, register, loading } = store;
+  const { currentUser, isAdmin, toast, login, register, loading, isDark } = store;
 
   // Show a loading indicator while checking auth session
   if (loading) {
     return (
-      <div className="ec-root">
+      <div className={`ec-root ${isDark ? "dark" : ""}`}>
         <GlobalStyles />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
           <div style={{ textAlign: "center", color: "var(--ink-soft)" }}>
@@ -53,7 +53,7 @@ export default function App() {
   }
 
   return (
-    <div className="ec-root">
+    <div className={`ec-root ${isDark ? "dark" : ""}`}>
       <GlobalStyles />
       <Header store={store} />
 

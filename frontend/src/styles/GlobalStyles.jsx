@@ -10,10 +10,20 @@ export default function GlobalStyles() {
           --line:#E7DCC9; --accent:#C0573B; --accent-dark:#A2452D; --gold:#C8923E;
           --sage:#5E7B5A; --danger:#B23A2E;
         }
+        .dark {
+          --bg:#1C1715; --bg2:#261E1A; --surface:#231C18; --ink:#F7F1E7; --ink-soft:#B6A893;
+          --line:#382D28; --accent:#D46D51; --accent-dark:#E5856C; --gold:#DDA754;
+          --sage:#759A71; --danger:#D15243;
+        }
         .ec-root{ font-family:'Plus Jakarta Sans',sans-serif; color:var(--ink);
-          background:radial-gradient(1200px 500px at 80% -10%, #FBEFDC 0%, transparent 60%),
-                     radial-gradient(900px 500px at -10% 10%, #F6E7CF 0%, transparent 55%), var(--bg);
-          min-height:100vh; }
+          background-color: var(--bg);
+          background-image: radial-gradient(1200px 500px at 80% -10%, #FBEFDC 0%, transparent 60%),
+                            radial-gradient(900px 500px at -10% 10%, #F6E7CF 0%, transparent 55%);
+          min-height:100vh; transition: background-color 0.25s ease, color 0.25s ease; }
+        .dark.ec-root{
+          background-image: radial-gradient(1200px 500px at 80% -10%, rgba(212,109,81,0.06) 0%, transparent 60%),
+                            radial-gradient(900px 500px at -10% 10%, rgba(200,146,62,0.05) 0%, transparent 55%);
+        }
         .ec-disp{ font-family:'Fraunces',serif; }
         .ec-input{ width:100%; border:1px solid var(--line); background:var(--surface); border-radius:12px;
           padding:11px 14px; font-family:inherit; font-size:15px; color:var(--ink); transition:.15s; }
@@ -26,7 +36,7 @@ export default function GlobalStyles() {
         .ec-btn-primary:hover{ background:var(--accent-dark); }
         .ec-btn-primary:disabled{ background:#D9C7B5; box-shadow:none; cursor:not-allowed; }
         .ec-btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); padding:10px 18px; }
-        .ec-btn-ghost:hover{ background:#fff; border-color:#D9C9B2; }
+        .ec-btn-ghost:hover{ background:var(--surface); border-color:var(--line); }
         .ec-card{ background:var(--surface); border:1px solid var(--line); border-radius:18px; }
         .ec-tile{ background:var(--surface); border:1px solid var(--line); border-radius:18px; overflow:hidden;
           transition:transform .18s ease, box-shadow .18s ease; opacity:0; animation:ecRise .5s ease forwards; }
@@ -37,7 +47,7 @@ export default function GlobalStyles() {
         .ec-chip{ font-size:13px; font-weight:600; padding:7px 15px; border-radius:999px; cursor:pointer; border:1px solid var(--line);
           background:var(--surface); color:var(--ink-soft); transition:.15s; white-space:nowrap; }
         .ec-chip:hover{ border-color:var(--accent); color:var(--accent); }
-        .ec-chip-on{ background:var(--ink); color:#fff; border-color:var(--ink); }
+        .ec-chip-on{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
         .ec-link{ cursor:pointer; }
         .ec-th{ text-align:left; font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
           color:var(--ink-soft); padding:12px 14px; border-bottom:1px solid var(--line); }
