@@ -52,20 +52,28 @@ export default function App() {
     );
   }
 
+  if (!currentUser) {
+    return (
+      <div className={`ec-root ${isDark ? "dark" : ""}`}>
+        <GlobalStyles />
+        <AuthForm onLogin={login} onRegister={register} />
+        <Toast toast={toast} />
+      </div>
+    );
+  }
+
   return (
     <div className={`ec-root ${isDark ? "dark" : ""}`}>
       <GlobalStyles />
       <Header store={store} />
 
       <main className="ec-wrap" style={{ ...wrap(), paddingTop: 28, paddingBottom: 70 }}>
-        {!currentUser
-          ? <AuthForm onLogin={login} onRegister={register} />
-          : <CurrentPage store={store} />}
+        <CurrentPage store={store} />
       </main>
 
       <Footer />
 
-      {currentUser && !isAdmin && <WhatsAppButton />}
+      {!isAdmin && <WhatsAppButton />}
       <Toast toast={toast} />
     </div>
   );
