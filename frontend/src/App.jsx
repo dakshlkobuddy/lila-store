@@ -57,7 +57,7 @@ export default function App() {
       <GlobalStyles />
       <Header store={store} />
 
-      <main style={{ ...wrap(), paddingTop: 28, paddingBottom: 70 }}>
+      <main className="ec-wrap" style={{ ...wrap(), paddingTop: 28, paddingBottom: 70 }}>
         {!currentUser
           ? <AuthForm onLogin={login} onRegister={register} />
           : <CurrentPage store={store} />}

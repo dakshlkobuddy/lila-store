@@ -42,8 +42,8 @@ export default function CheckoutPage({ store }) {
   };
 
   return (
-    <div style={s.page}>
-      <h1 className="ec-disp" style={s.heading}>Checkout</h1>
+    <div className="ec-narrow-page" style={s.page}>
+      <h1 className="ec-disp ec-checkout-heading" style={s.heading}>Checkout</h1>
       {cartDetailed.length === 0 ? <Empty msg="Your cart is empty." /> : (
         <>
           <div className="ec-card" style={s.summary}>

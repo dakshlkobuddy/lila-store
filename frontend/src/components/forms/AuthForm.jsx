@@ -59,7 +59,7 @@ export default function AuthForm({ onLogin, onRegister }) {
         </div>
         <h1 className="ec-disp" style={{ fontSize: 30 }}>Welcome to {BRAND}</h1>
       </div>
-      <div className="ec-card" style={{ padding: 30 }}>
+      <div className="ec-card ec-auth-card" style={{ padding: 30 }}>
         <h2 className="ec-disp" style={{ fontSize: 24, marginBottom: 6 }}>{mode === "login" ? "Sign in" : "Create an account"}</h2>
         <p style={{ color: "var(--ink-soft)", fontSize: 14, marginBottom: 22 }}>{mode === "login" ? "Enter your credentials to continue." : "It only takes a moment."}</p>
         {mode === "register" && <>

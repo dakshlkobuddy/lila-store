@@ -87,8 +87,8 @@ function ProductDetail({ product, onAdd, onBack }) {
 
         <div>
           <span style={s.category}>{p.category}</span>
-          <h1 className="ec-disp" style={s.title}>{p.name}</h1>
-          <div className="ec-disp" style={s.price}>{money(p.price)}</div>
+          <h1 className="ec-disp ec-detail-title" style={s.title}>{p.name}</h1>
+          <div className="ec-disp ec-detail-price" style={s.price}>{money(p.price)}</div>
           <div style={s.stockWrap}><StockBadge stock={p.stock} /></div>
           <p style={s.desc}>{p.description}</p>
 

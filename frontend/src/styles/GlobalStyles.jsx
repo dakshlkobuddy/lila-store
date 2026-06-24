@@ -15,6 +15,7 @@ export default function GlobalStyles() {
           --line:#382D28; --accent:#D46D51; --accent-dark:#E5856C; --gold:#DDA754;
           --sage:#759A71; --danger:#D15243;
         }
+        *,*::before,*::after{ box-sizing:border-box; }
         .ec-root{ font-family:'Plus Jakarta Sans',sans-serif; color:var(--ink);
           background-color: var(--bg);
           background-image: radial-gradient(1200px 500px at 80% -10%, #FBEFDC 0%, transparent 60%),
@@ -54,9 +55,123 @@ export default function GlobalStyles() {
         .ec-td{ padding:13px 14px; border-bottom:1px solid var(--line); font-size:14px; vertical-align:middle; }
         .ec-scroll::-webkit-scrollbar{ height:6px; } .ec-scroll::-webkit-scrollbar-thumb{ background:#DDCDB6; border-radius:9px; }
       `}</style>
+
+      {/* ── Nav show/hide ─────────────────────────────────────────── */}
       <style>{`
-        @media (max-width:760px){ .ec-nav-desktop{ display:none !important; } .ec-detail{ grid-template-columns:1fr !important; } .ec-gate{ grid-template-columns:1fr !important; } }
+        @media (max-width:760px){ .ec-nav-desktop{ display:none !important; } }
         @media (min-width:761px){ .ec-nav-mobile{ display:none !important; } }
+      `}</style>
+
+      {/* ── Layout: detail & gate grids ───────────────────────────── */}
+      <style>{`
+        .ec-detail{ display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap:30px; }
+        .ec-gate{  display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap:24px; }
+        @media (max-width:760px){
+          .ec-detail{ grid-template-columns:1fr !important; gap:20px; }
+          .ec-gate{   grid-template-columns:1fr !important; gap:16px; }
+        }
+      `}</style>
+
+      {/* ── Wrapper padding ───────────────────────────────────────── */}
+      <style>{`
+        .ec-wrap{ max-width:1120px; margin:0 auto; padding:0 20px; }
+        @media (max-width:480px){ .ec-wrap{ padding:0 14px; } }
+      `}</style>
+
+      {/* ── Hero section ──────────────────────────────────────────── */}
+      <style>{`
+        @media (max-width:600px){
+          .ec-hero{ padding:28px 20px !important; margin-bottom:20px !important; }
+          .ec-hero-title{ font-size:clamp(22px,7vw,32px) !important; }
+          .ec-hero-lead{ font-size:14px !important; margin-bottom:16px !important; }
+        }
+      `}</style>
+
+      {/* ── Toolbar (search + sort + filter) ─────────────────────── */}
+      <style>{`
+        @media (max-width:520px){
+          .ec-toolbar{ gap:8px !important; }
+          .ec-toolbar .ec-input{ font-size:14px; }
+          .ec-sort-select{ min-width:0; font-size:13px; }
+        }
+      `}</style>
+
+      {/* ── Product grid ──────────────────────────────────────────── */}
+      <style>{`
+        /* Force 2 columns on phones, auto-fill on larger */
+        @media (max-width:480px){
+          .ec-product-grid{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap:12px !important; }
+          .ec-tile .ec-tile-name{ font-size:13px !important; }
+          .ec-tile .ec-tile-price{ font-size:16px !important; }
+        }
+      `}</style>
+
+      {/* ── Cart page ─────────────────────────────────────────────── */}
+      <style>{`
+        .ec-cart-row{ display:flex; align-items:center; gap:16px; padding:16px; margin-bottom:16px; }
+        @media (max-width:520px){
+          .ec-cart-row{ flex-wrap:wrap; gap:12px; padding:14px; }
+          .ec-cart-thumb{ width:64px !important; height:64px !important; }
+          .ec-cart-heading{ font-size:26px !important; }
+          .ec-cart-summary{ padding:20px !important; }
+          .ec-cart-total-row{ font-size:18px !important; }
+        }
+      `}</style>
+
+      {/* ── Checkout & Confirmation ───────────────────────────────── */}
+      <style>{`
+        .ec-narrow-page{ max-width:560px; margin:0 auto; }
+        @media (max-width:600px){
+          .ec-narrow-page{ max-width:100% !important; }
+          .ec-checkout-heading{ font-size:24px !important; }
+        }
+      `}</style>
+
+      {/* ── Product detail page ───────────────────────────────────── */}
+      <style>{`
+        @media (max-width:760px){
+          .ec-detail-title{ font-size:24px !important; }
+          .ec-detail-price{ font-size:22px !important; }
+        }
+      `}</style>
+
+      {/* ── Admin dashboard ───────────────────────────────────────── */}
+      <style>{`
+        @media (max-width:600px){
+          .ec-admin-heading{ font-size:22px !important; }
+          .ec-admin-table-wrap{ font-size:13px; }
+          .ec-admin-table-wrap .ec-th,
+          .ec-admin-table-wrap .ec-td{ padding:10px 10px; }
+          /* Hide less important columns on phones */
+          .ec-admin-col-cat{ display:none; }
+        }
+        @media (max-width:480px){
+          .ec-stat-grid{ grid-template-columns: repeat(2, minmax(0,1fr)) !important; gap:12px !important; }
+        }
+      `}</style>
+
+      {/* ── Footer ────────────────────────────────────────────────── */}
+      <style>{`
+        @media (max-width:480px){
+          .ec-footer-grid{ grid-template-columns:1fr 1fr !important; gap:20px !important; }
+          .ec-footer-brand{ grid-column: 1 / -1; }
+        }
+      `}</style>
+
+      {/* ── Auth form gate ────────────────────────────────────────── */}
+      <style>{`
+        @media (max-width:520px){
+          .ec-auth-card{ padding:22px 18px !important; margin:16px 0 !important; }
+        }
+      `}</style>
+
+      {/* ── Utility: touch-friendly tap targets ──────────────────── */}
+      <style>{`
+        @media (max-width:760px){
+          .ec-btn{ min-height:44px; }
+          .ec-chip{ min-height:38px; }
+          .ec-input{ min-height:46px; }
+        }
       `}</style>
     </>
   );

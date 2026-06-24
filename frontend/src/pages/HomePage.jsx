@@ -15,19 +15,19 @@ export default function HomePage({ store }) {
 
   return (
     <>
-      <section className="ec-card" style={s.hero}>
+      <section className="ec-card ec-hero" style={s.hero}>
         <span style={s.eyebrow}>Welcome to {BRAND}</span>
-        <h1 className="ec-disp" style={s.title}>{TAGLINE}</h1>
-        <p style={s.lead}>Browse our latest stock, add what you love to the cart, and check out in seconds — no trip to the store needed.</p>
+        <h1 className="ec-disp ec-hero-title" style={s.title}>{TAGLINE}</h1>
+        <p className="ec-hero-lead" style={s.lead}>Browse our latest stock, add what you love to the cart, and check out in seconds — no trip to the store needed.</p>
         <button className="ec-btn ec-btn-primary" onClick={() => document.getElementById("ec-grid")?.scrollIntoView({ behavior: "smooth" })}>Start shopping <ChevronRight size={16} /></button>
       </section>
 
-      <div style={s.toolbar}>
+      <div className="ec-toolbar" style={s.toolbar}>
         <div style={s.searchWrap}>
           <Search size={17} style={s.searchIcon} />
           <input className="ec-input" style={s.searchInput} placeholder="Search products…" value={query} onChange={(e) => setQuery(e.target.value)} />
         </div>
-        <select className="ec-input" style={s.sortSelect} value={sort} onChange={(e) => setSort(e.target.value)}>
+        <select className="ec-input ec-sort-select" style={s.sortSelect} value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="featured">Sort: Featured</option>
           <option value="priceAsc">Price: Low to High</option>
           <option value="priceDesc">Price: High to Low</option>
@@ -52,7 +52,7 @@ export default function HomePage({ store }) {
         {["All", ...CATEGORIES].map((c) => <span key={c} className={"ec-chip" + (cat === c ? " ec-chip-on" : "")} onClick={() => setCat(c)}>{c}</span>)}
       </div>
 
-      <div id="ec-grid" style={grid(220)}>
+      <div id="ec-grid" className="ec-product-grid" style={grid(220)}>
         {visibleProducts.map((p, i) => (
           <div key={p.id} className="ec-tile" style={s.tile(i)}>
             <div className="ec-link" onClick={() => go("product", p.id)} style={{ position: "relative" }}>

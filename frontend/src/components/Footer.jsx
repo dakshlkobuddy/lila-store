@@ -8,10 +8,10 @@ export default function Footer() {
 
   return (
     <footer style={{ borderTop: "1px solid var(--line)", background: "var(--bg2)", marginTop: 32 }}>
-      <div style={{ ...wrap(), padding: "36px 20px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 28 }}>
+      <div className="ec-footer-grid" style={{ ...wrap(), padding: "36px 20px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 28 }}>
 
         {/* Brand */}
-        <div>
+        <div className="ec-footer-brand">
           <span className="ec-disp" style={{ fontSize: 18, color: "var(--ink)", display: "block", marginBottom: 8 }}>{BRAND}</span>
           <p style={{ fontSize: 13, color: "var(--ink-soft)", lineHeight: 1.7, maxWidth: 220 }}>
             Women's everyday wear — bras, lingerie, nightwear &amp; more. Delivered to your door.

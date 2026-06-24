@@ -9,7 +9,7 @@ export default function ConfirmationPage({ store }) {
   const items = lastOrder.order_items || [];
 
   return (
-    <div style={s.page}>
+    <div className="ec-narrow-page" style={s.page}>
       <div className="ec-card" style={s.card}>
         <div style={s.check}><CheckCircle2 size={34} color="var(--sage)" /></div>
         <h1 className="ec-disp" style={s.title}>Order placed!</h1>

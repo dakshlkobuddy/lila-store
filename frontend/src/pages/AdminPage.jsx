@@ -95,7 +95,7 @@ export default function AdminPage({ store }) {
       )}
 
       <div style={s.header}>
-        <h1 className="ec-disp" style={s.heading}>Dashboard</h1>
+        <h1 className="ec-disp ec-admin-heading" style={s.heading}>Dashboard</h1>
       </div>
 
       <div className="ec-scroll" style={s.tabsRow}>
@@ -108,7 +108,7 @@ export default function AdminPage({ store }) {
 
       {adminTab === "overview" && (
         <>
-          <div style={grid(180)}>
+          <div className="ec-stat-grid" style={grid(180)}>
             <Stat label="Revenue" value={money(revenue)} icon={TrendingUp} color="var(--sage)" />
             <Stat label="Orders" value={orders.length} icon={ClipboardList} color="var(--accent)" />
             <Stat label="Products" value={products.filter(p => p.is_active).length} icon={Box} color="#5C6B79" />
@@ -140,14 +140,14 @@ export default function AdminPage({ store }) {
               onDeleteImage={deleteProductImage}
             />
           )}
-          <div className="ec-card ec-scroll" style={s.tableCard}>
+          <div className="ec-card ec-scroll ec-admin-table-wrap" style={s.tableCard}>
             <table style={s.table}>
               <thead><tr><th className="ec-th">Product</th><th className="ec-th">Category</th><th className="ec-th">Price</th><th className="ec-th">Stock</th><th className="ec-th">Status</th><th className="ec-th"></th></tr></thead>
               <tbody>
                 {products.map((p) => (
                   <tr key={p.id} style={{ opacity: p.is_active ? 1 : 0.5 }}>
                     <td className="ec-td"><div style={s.prodCell}><ProductImage product={p} className="" style={s.prodThumb} /><span style={s.prodName}>{p.name}</span></div></td>
-                    <td className="ec-td" style={s.catCell}>{p.category}</td>
+                    <td className="ec-td ec-admin-col-cat" style={s.catCell}>{p.category}</td>
                     <td className="ec-td">{money(p.price)}</td>
                     <td className="ec-td"><StockBadge stock={p.stock} /></td>
                     <td className="ec-td">

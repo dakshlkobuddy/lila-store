@@ -166,8 +166,8 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
       <input className="ec-input" style={{ marginBottom: errors.address ? 0 : 12, ...errBorder(errors.address) }} placeholder="house no, area, landmark" value={f.address} onChange={(e) => set("address", e.target.value)} />
       <FieldError msg={errors.address} />
 
-      <div style={{ display: "flex", gap: 10, marginBottom: errors.city || errors.state || errors.cityCustom ? 0 : 12 }}>
-        <div style={{ flex: 1 }}>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: errors.city || errors.state || errors.cityCustom ? 0 : 12 }}>
+        <div style={{ flex: 1, minWidth: 140 }}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
             State <span style={{ color: "var(--accent)" }}>*</span>
           </label>
@@ -177,7 +177,7 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
           </select>
           <FieldError msg={errors.state} />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 140 }}>
           <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
             City <span style={{ color: "var(--accent)" }}>*</span>
           </label>

@@ -9,7 +9,7 @@ export default function CartPage({ store }) {
 
   return (
     <div style={s.page}>
-      <h1 className="ec-disp" style={s.heading}>Your cart</h1>
+      <h1 className="ec-disp ec-cart-heading" style={s.heading}>Your cart</h1>
       {cartDetailed.length === 0 ? (
         <Empty msg="Your cart is empty." action={<button className="ec-btn ec-btn-primary" onClick={() => go("home")}>Browse products</button>} />
       ) : (
@@ -18,7 +18,7 @@ export default function CartPage({ store }) {
             const atMax = c.qty >= (c.product?.stock ?? Infinity);
             return (
               <div key={c.id} className="ec-card" style={s.row}>
-                <ProductImage product={c.product} className="" style={s.thumb} />
+                <ProductImage product={c.product} className="ec-cart-thumb" style={s.thumb} />
                 <div style={s.info}>
                   <h3 style={s.name}>{c.product.name}</h3>
                   {variantLabel(c) && <div style={s.variant}>{variantLabel(c)}</div>}
@@ -40,8 +40,8 @@ export default function CartPage({ store }) {
               </div>
             );
           })}
-          <div className="ec-card" style={s.summary}>
-            <div style={s.totalRow}>
+          <div className="ec-card ec-cart-summary" style={s.summary}>
+            <div className="ec-cart-total-row" style={s.totalRow}>
               <span>Total</span><span className="ec-disp">{money(cartTotal)}</span>
             </div>
             <button className="ec-btn ec-btn-primary" style={s.checkoutBtn} onClick={() => go("checkout")}>

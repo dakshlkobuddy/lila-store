@@ -1,6 +1,6 @@
 // Styling for the cart screen.
 export const s = {
-  page: { maxWidth: 760, margin: "0 auto", padding: "20px 0" },
+  page: { maxWidth: 760, margin: "0 auto", padding: "20px 0", width: "100%" },
   heading: { fontSize: 34, marginBottom: 28, letterSpacing: "-0.5px" },
   
   // Products list
