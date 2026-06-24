@@ -62,6 +62,17 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
     setErrors((e) => ({ ...e, [k]: "" }));
   };
 
+  // Block non-numeric key presses for number-only fields
+  const onlyNumbers = (e) => {
+    // Allow: backspace, delete, tab, escape, enter, arrow keys, home, end
+    const allowedKeys = ["Backspace", "Delete", "Tab", "Escape", "Enter", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"];
+    if (allowedKeys.includes(e.key)) return;
+    // Allow Ctrl/Cmd+A, C, V, X
+    if ((e.ctrlKey || e.metaKey) && ["a", "c", "v", "x"].includes(e.key.toLowerCase())) return;
+    // Block anything that is not a digit
+    if (!/^[0-9]$/.test(e.key)) e.preventDefault();
+  };
+
   // Run validation on a specific field
   const validateField = (field, value) => {
     switch (field) {
@@ -173,7 +184,17 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
         Phone number <span style={{ color: "var(--accent)" }}>*</span>
       </label>
-      <input className="ec-input" inputMode="numeric" style={{ marginBottom: errors.phone ? 0 : 12, ...errBorder(errors.phone) }} placeholder="e.g. 9876543210" value={f.phone} onChange={(e) => set("phone", e.target.value)} onBlur={() => handleBlur("phone")} />
+      <input
+        className="ec-input"
+        inputMode="numeric"
+        maxLength={10}
+        style={{ marginBottom: errors.phone ? 0 : 12, ...errBorder(errors.phone) }}
+        placeholder="10-digit mobile number"
+        value={f.phone}
+        onChange={(e) => set("phone", e.target.value)}
+        onKeyDown={onlyNumbers}
+        onBlur={() => handleBlur("phone")}
+      />
       <FieldError msg={errors.phone} />
 
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
@@ -238,9 +259,10 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
         inputMode="numeric"
         maxLength={6}
         style={{ marginBottom: errors.pincode ? 0 : 22, ...errBorder(errors.pincode) }}
-        placeholder="e.g. 302001"
+        placeholder="6-digit PIN code"
         value={f.pincode}
         onChange={(e) => set("pincode", e.target.value)}
+        onKeyDown={onlyNumbers}
         onBlur={() => handleBlur("pincode")}
       />
       <FieldError msg={errors.pincode} />
