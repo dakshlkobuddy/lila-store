@@ -183,7 +183,7 @@ export default function AdminPage({ store }) {
       {adminTab === "orders" && (
         <>
           {/* Status filter tabs */}
-          <div className="ec-scroll" style={{ display: "flex", gap: 8, marginBottom: 16, paddingBottom: 4 }}>
+          <div className="ec-scroll" style={{ display: "flex", gap: 8, marginBottom: 16, paddingBottom: 4, overflowX: "auto" }}>
             {["All", ...STATUS_FLOW].map((st) => (
               <span
                 key={st}

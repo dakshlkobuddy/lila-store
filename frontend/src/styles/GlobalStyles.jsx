@@ -16,11 +16,12 @@ export default function GlobalStyles() {
           --sage:#759A71; --danger:#D15243;
         }
         *,*::before,*::after{ box-sizing:border-box; }
+        html, body { margin:0; padding:0; overflow-x:hidden; }
         .ec-root{ font-family:'Plus Jakarta Sans',sans-serif; color:var(--ink);
           background-color: var(--bg);
           background-image: radial-gradient(1200px 500px at 80% -10%, #FBEFDC 0%, transparent 60%),
                             radial-gradient(900px 500px at -10% 10%, #F6E7CF 0%, transparent 55%);
-          min-height:100vh; transition: background-color 0.25s ease, color 0.25s ease; }
+          min-height:100vh; transition: background-color 0.25s ease, color 0.25s ease; overflow-x:hidden; }
         .dark.ec-root{
           background-image: radial-gradient(1200px 500px at 80% -10%, rgba(212,109,81,0.06) 0%, transparent 60%),
                             radial-gradient(900px 500px at -10% 10%, rgba(200,146,62,0.05) 0%, transparent 55%);
