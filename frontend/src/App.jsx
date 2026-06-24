@@ -32,7 +32,7 @@ function CurrentPage({ store }) {
 
 export default function App() {
   const store = useStore();
-  const { currentUser, isAdmin, toast, login, register, loading, isDark } = store;
+  const { currentUser, isAdmin, toast, login, register, resendVerification, loading, isDark } = store;
 
   // Show a loading indicator while checking auth session
   if (loading) {
@@ -56,7 +56,7 @@ export default function App() {
     return (
       <div className={`ec-root ${isDark ? "dark" : ""}`}>
         <GlobalStyles />
-        <AuthForm onLogin={login} onRegister={register} />
+        <AuthForm onLogin={login} onRegister={register} onResendVerification={resendVerification} />
         <Toast toast={toast} />
       </div>
     );

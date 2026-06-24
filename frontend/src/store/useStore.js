@@ -314,7 +314,18 @@ export default function useStore() {
     });
 
     if (error) {
-      notify(error.message || "Invalid email or password", "warn");
+      // Friendly message for unverified accounts
+      if (
+        error.message?.toLowerCase().includes("email not confirmed") ||
+        error.message?.toLowerCase().includes("email_not_confirmed")
+      ) {
+        notify(
+          "Please verify your email first. Check your inbox (and spam folder).",
+          "warn"
+        );
+      } else {
+        notify(error.message || "Invalid email or password", "warn");
+      }
       return { error };
     }
 
@@ -348,7 +359,25 @@ export default function useStore() {
       return { error };
     }
 
-    notify("Account created! Please sign in.");
+    notify("Verification email sent! Check your inbox.");
+    // needsVerification flag tells AuthForm to show the "check inbox" screen
+    return { error: null, needsVerification: true, email: email.trim() };
+  };
+
+  // Resend the signup verification email (uses Supabase Auth resend API).
+  // Called when the user clicks "Resend Email" on the verification screen.
+  const resendVerification = async (email) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+    });
+
+    if (error) {
+      notify(error.message || "Failed to resend verification email", "warn");
+      return { error };
+    }
+
+    notify("Verification email resent! Check your inbox.");
     return { error: null };
   };
 
@@ -635,7 +664,7 @@ export default function useStore() {
     revenue, lowStock, outStock, priceCeiling, priceCap,
     // actions
     go, notify, addToCart, setQtyAt, removeAt,
-    login, register, logout, placeOrder, placeOrderOnline,
+    login, register, logout, resendVerification, placeOrder, placeOrderOnline,
     saveProduct, toggleProduct, setOrderStatus, toggleDark,
     uploadProductImage, deleteProductImage,
     loadProducts, loadCart, loadOrders,
