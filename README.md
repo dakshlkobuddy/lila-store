@@ -1,145 +1,226 @@
-# Lila &amp; Co. — Women's Wear Online Store
+# Lila & Co. — Women's Wear Online Store
 
-React + Vite women's wear storefront with cart, checkout, admin dashboard, and order management.
-
-A working storefront + admin dashboard prototype, built with **React + Vite**.
-Single login (admin or customer), product catalog with size/colour options,
-cart, checkout, order management, photo upload, filters, WhatsApp ordering,
-and form validation.
+A full-stack women's wear storefront built with **React + Vite** (frontend), **Supabase** (database + auth + storage), and **Supabase Edge Functions** (backend API). Includes online payments via **Razorpay**.
 
 ---
 
-## 1. What you need first (one-time setup)
+## What's Built
 
-Install **Node.js** (version 18 or newer). Download it from:
-https://nodejs.org  → pick the **LTS** version and install.
+### Customer Features
+- **Auth** — Register, login, logout (Supabase Auth). Role-based: admin vs customer detected automatically on sign-in.
+- **Product Catalog** — Browse all active products with search, category filters, price range slider, in-stock filter, and sort (featured / price low-high / price high-low).
+- **Product Detail Page** — View product description, pick size and colour variants, add to cart.
+- **Cart** — Add items, update quantities (capped at stock), remove items. Persists in Supabase DB (not localStorage).
+- **Checkout** — Enter shipping details. Choose between:
+  - **Cash on Delivery (COD)** — order placed directly via `place_order()` RPC.
+  - **Online Payment (Razorpay)** — full payment flow: Razorpay modal → HMAC-SHA256 server-side verification → order placed only after successful payment.
+- **Order Confirmation** — Summary of placed order with a WhatsApp share button.
+- **My Orders** — View order history with a live status timeline (Pending → Confirmed → Processing → Shipped → Delivered).
+- **WhatsApp Button** — Floating button to contact the store directly.
+- **Dark Mode** — Toggle dark/light theme, saved to localStorage.
+- **Fully Responsive** — Works on mobile, tablet, and desktop.
 
-To check it worked, open a terminal and run:
+### Admin Features (Dashboard)
+- **Overview tab** — Revenue total, order count, active product count, low/out-of-stock alerts with restock list.
+- **Products tab** — Table of all products (active + inactive). Add new products, edit existing ones, deactivate/reactivate with confirm modal. Upload product images (Supabase Storage).
+- **Orders tab** — All customer orders with status filter tabs. Change order status via dropdown (Pending → Confirmed → Processing → Shipped → Delivered → Cancelled). See shipping address, phone, and order items inline.
 
-```bash
-node -v
-npm -v
-```
+### Backend (Supabase Edge Functions)
+| Function | What it does |
+|---|---|
+| `create-razorpay-order` | Creates a Razorpay order server-side, computes the total from DB prices (never trusts client amounts) |
+| `verify-and-place-order` | Verifies Razorpay HMAC-SHA256 signature, then calls `place_order()` RPC with `payment_status = 'paid'` |
+| `order-notifications` | Webhook listener for order events (notifications integration) |
 
-You should see version numbers.
+### Database (Supabase + PostgreSQL)
+| Table | Purpose |
+|---|---|
+| `profiles` | Extends `auth.users` — stores name and role (`customer` / `admin`) |
+| `products` | Product catalog with sizes, colours, stock, image URL, badge, active flag |
+| `orders` | Order header — customer, total, shipping JSON, status, payment info |
+| `order_items` | Normalised line items — product snapshot (name + price at time of order) |
+| `cart_items` | Per-user cart rows, unique per (user, product, size, colour) |
 
-(Optional but recommended) Install **VS Code**: https://code.visualstudio.com
-
----
-
-## 2. Open and run the project
-
-1. Unzip this folder somewhere you'll find it (e.g. Desktop).
-2. Open the folder in VS Code: **File → Open Folder…** → choose the `lila-store` folder.
-3. Open the built-in terminal: **Terminal → New Terminal**.
-4. Go into the frontend app and install the dependencies (only needed the first time):
-
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-5. Start the app:
-
-   ```bash
-   npm run dev
-   ```
-
-6. Your browser will open at **http://localhost:5173** automatically.
-   (If not, hold Ctrl/Cmd and click the link shown in the terminal.)
-
-To stop the app, click in the terminal and press **Ctrl + C**.
-
----
-
-## 3. Logging in
-
-There is **one login page**. It detects the role from the account:
-
-- **Admin (store owner):**  `admin@store.com`  /  `admin123`
-  → opens the Dashboard (add/edit/delete products, manage orders, see stats).
-- **Customer:** click **Create an account**, register, then sign in
-  → browse products, add to cart, and place orders.
+**Security:**
+- Row Level Security (RLS) on all tables.
+- `place_order()` is a `SECURITY DEFINER` RPC — clients cannot insert orders directly; only this function can.
+- Product prices and totals are always computed server-side; client values are ignored.
+- Admin role cannot be changed by the user themselves (RLS `WITH CHECK`).
 
 ---
 
-## 4. Useful things to know
+## Tech Stack
 
-- **Data is saved in your browser** (localStorage). It stays after refresh on the
-  same browser/computer. Clearing browser data, or opening in a different browser,
-  starts fresh.
-- **Reset the demo data:** Admin Dashboard → top-right **"Reset demo data"**.
-- **WhatsApp number:** open `frontend/src/constants.js` and change the line
-  `const WHATSAPP_NUMBER = "919580023800";` to your number
-  (country code + number, no `+`, no spaces).
-- **Store name / tagline / categories:** also in `frontend/src/constants.js`
-  (`BRAND`, `TAGLINE`, `CATEGORIES`).
-
----
-
-## 5. Build for hosting later
-
-```bash
-cd frontend
-npm run build      # creates an optimized site in the /dist folder
-npm run preview    # preview that build locally
-```
-
-The `frontend/dist` folder can be uploaded to any static host (Netlify, Vercel, etc.).
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, Vite 8, vanilla CSS-in-JS |
+| Icons | Lucide React |
+| Backend | Supabase Edge Functions (Deno / TypeScript) |
+| Database | Supabase (PostgreSQL) with RLS |
+| Auth | Supabase Auth |
+| Storage | Supabase Storage (`product-images` bucket) |
+| Payments | Razorpay (test + live keys supported) |
 
 ---
 
-## 6. Project structure
-
-Everything is split into small, focused files so each part is easy to find and debug.
+## Project Structure
 
 ```
 lila-store/
-├─ README.md               # repo guide
-├─ .gitignore              # shared ignore rules
-└─ frontend/               # React + Vite storefront app
-   ├─ index.html           # page shell
-   ├─ package.json         # dependencies & scripts
-   ├─ vite.config.js       # build/dev config
-   ├─ e2e-test.js          # Playwright smoke test
-   ├─ debug-login.js       # login debugging helper
-   └─ src/
-      ├─ main.jsx          # React entry point
-      ├─ index.css         # base styles
-      ├─ App.jsx           # layout + routing
-      ├─ constants.js      # brand, categories, WhatsApp number, colours
-      ├─ store/            # shared state + actions
-      ├─ data/             # starter products
-      ├─ lib/              # helpers
-      ├─ styles/           # global styles
-      ├─ components/       # reusable UI pieces
-      └─ pages/            # screen components + page styles
+├── README.md
+├── .gitignore
+│
+├── frontend/                        # React + Vite storefront
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── .env.local                   # Supabase + Razorpay keys (not committed)
+│   └── src/
+│       ├── main.jsx                 # React entry point
+│       ├── index.css                # base reset
+│       ├── App.jsx                  # layout + client-side routing
+│       ├── constants.js             # BRAND, TAGLINE, WHATSAPP_NUMBER, CATEGORIES
+│       ├── store/
+│       │   └── useStore.js          # all state + Supabase actions
+│       ├── lib/
+│       │   ├── supabaseClient.js    # Supabase client init
+│       │   ├── razorpay.js          # Razorpay SDK loader + modal wrapper
+│       │   ├── format.js            # money, WhatsApp link, order message
+│       │   ├── ui.js                # layout helpers (grid, wrap)
+│       │   ├── validation.js        # form field validators
+│       │   ├── imageValidation.js   # image file type/size checks
+│       │   └── storage.js           # Supabase Storage helpers
+│       ├── styles/
+│       │   └── GlobalStyles.jsx     # design tokens, theme, responsive rules
+│       ├── components/
+│       │   ├── Header.jsx           # nav bar with cart count + dark mode toggle
+│       │   ├── Footer.jsx
+│       │   ├── Toast.jsx            # notification toasts
+│       │   ├── WhatsAppButton.jsx   # floating WhatsApp CTA
+│       │   ├── OrderCard.jsx        # order row with status timeline
+│       │   ├── ProductImage.jsx     # image with category-icon fallback
+│       │   ├── StockBadge.jsx       # In stock / Low stock / Out of stock
+│       │   ├── Stat.jsx             # admin stat card
+│       │   ├── Badge.jsx / Pill.jsx / Empty.jsx / FieldError.jsx
+│       │   └── forms/
+│       │       ├── AuthForm.jsx     # login + register tabs
+│       │       ├── CheckoutForm.jsx # shipping fields + COD/Online buttons
+│       │       └── ProductForm.jsx  # admin add/edit product with image upload
+│       └── pages/
+│           ├── HomePage.jsx/.styles.js
+│           ├── ProductDetailPage.jsx/.styles.js
+│           ├── CartPage.jsx/.styles.js
+│           ├── CheckoutPage.jsx/.styles.js
+│           ├── ConfirmationPage.jsx/.styles.js
+│           ├── OrdersPage.jsx/.styles.js
+│           └── AdminPage.jsx/.styles.js
+│
+├── backend/                         # Supabase Edge Functions (Deno / TypeScript)
+│   ├── deno.json
+│   └── functions/
+│       ├── _shared/
+│       │   └── cors.ts              # CORS headers shared by all functions
+│       ├── create-razorpay-order/
+│       │   └── index.ts
+│       ├── verify-and-place-order/
+│       │   └── index.ts
+│       └── order-notifications/
+│           └── index.ts
+│
+└── supabase/                        # Database (PostgreSQL migrations)
+    └── migrations/
+        ├── 001_initial_schema.sql   # tables, RLS, indexes, place_order() RPC
+        ├── 002_seed_products.sql    # sample products
+        ├── 003_ensure_profile.sql   # ensure_profile() RPC (self-heal)
+        ├── 004_payment_columns.sql  # payment_status, payment_id columns + updated RPC
+        └── 005_notifications_webhook.sql
 ```
-
-### Where to change things (quick guide)
-
-- **Store name, categories, WhatsApp number, colours** → `frontend/src/constants.js`
-- **A page's layout/markup & behaviour** → `frontend/src/pages/<Page>.jsx`
-- **A page's own styling** → `frontend/src/pages/<Page>.styles.js` (each page has one)
-- **Shared logic** (cart, login, orders, saving data) → `frontend/src/store/useStore.js`
-- **Global theme** (colour variables, fonts, button styles, mobile rules) → `frontend/src/styles/GlobalStyles.jsx`
-- **Starter products** → `frontend/src/data/seed.js` (then bump `SEED_VERSION` in `frontend/src/constants.js`)
-
-Each page imports its styles as `s` (e.g. `style={s.heading}`), so the markup
-stays clean and all of a page's styling lives in one place next to it.
-
 
 ---
 
-## Note — this is a prototype
+## Running Locally
 
-This runs fully in the browser and is great for trying the experience and showing
-it to others. For a **real, live business** you'll later want a backend for:
+### Prerequisites
+- **Node.js 18+** — https://nodejs.org (pick LTS)
+- A Supabase project with the migrations applied (see below)
 
-- secure logins / hashed passwords,
-- a shared product database so all customers see the same catalog and photos,
-- online payments (Razorpay / UPI / cards),
-- and automatic email / SMS order confirmations.
+### Setup
 
-The current code maps cleanly onto a Next.js + database + payments version when
-you're ready to take it live.
+```bash
+# 1. Install frontend dependencies (first time only)
+cd frontend
+npm install
+
+# 2. Create .env.local with your keys
+# (copy the template below and fill in your values)
+
+# 3. Start the dev server
+npm run dev
+```
+
+Opens at **http://localhost:5173**
+
+### `.env.local` template
+```env
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_key_here
+
+# Razorpay public key — safe in browser
+# Use rzp_test_... for testing, rzp_live_... for production
+VITE_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+```
+
+---
+
+## Database Setup (Supabase)
+
+Run all migrations **in order** in the Supabase Dashboard → SQL Editor:
+
+```
+supabase/migrations/001_initial_schema.sql
+supabase/migrations/002_seed_products.sql
+supabase/migrations/003_ensure_profile.sql
+supabase/migrations/004_payment_columns.sql
+supabase/migrations/005_notifications_webhook.sql
+```
+
+All migrations are idempotent — safe to re-run.
+
+---
+
+## Logging In
+
+| Role | Email | Password |
+|---|---|---|
+| Admin (store owner) | `admin@store.com` | `admin123` |
+| Customer | Register a new account | — |
+
+Admin auto-redirects to the Dashboard on sign-in. Customers see the store.
+
+---
+
+## Customisation
+
+| What to change | Where |
+|---|---|
+| Store name, tagline | `frontend/src/constants.js` → `BRAND`, `TAGLINE` |
+| WhatsApp number | `frontend/src/constants.js` → `WHATSAPP_NUMBER` (format: `91XXXXXXXXXX`) |
+| Product categories | `frontend/src/constants.js` → `CATEGORIES` (also update `CAT_STYLE`) |
+| Size presets (admin form) | `frontend/src/constants.js` → `SIZE_PRESETS` |
+| Global theme (colours, fonts) | `frontend/src/styles/GlobalStyles.jsx` |
+| A page's layout | `frontend/src/pages/<Page>.jsx` |
+| A page's styles | `frontend/src/pages/<Page>.styles.js` |
+| Shared state & actions | `frontend/src/store/useStore.js` |
+
+---
+
+## Build for Production
+
+```bash
+cd frontend
+npm run build      # outputs to frontend/dist/
+npm run preview    # preview the production build locally
+```
+
+The `frontend/dist/` folder can be deployed to **Vercel**, **Netlify**, or any static host.
+Remember to set the `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_RAZORPAY_KEY_ID` environment variables in your host's dashboard.
