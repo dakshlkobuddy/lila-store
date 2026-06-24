@@ -58,7 +58,57 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
   
   const set = (k, v) => {
     setF((p) => ({ ...p, [k]: v }));
+    // Clear error immediately when user starts typing again
     setErrors((e) => ({ ...e, [k]: "" }));
+  };
+
+  // Run validation on a specific field
+  const validateField = (field, value) => {
+    switch (field) {
+      case "name": {
+        const trimmedName = value.trim();
+        if (!trimmedName) return "Full name is required.";
+        if (trimmedName.length < 2) return "Full name must be at least 2 characters.";
+        if (!/^[a-zA-Z\s]+$/.test(trimmedName)) return "Full name can only contain letters and spaces.";
+        return "";
+      }
+      case "phone": {
+        const cleanPhone = value.replace(/\D/g, "");
+        if (!value.trim()) return "Phone number is required.";
+        if (cleanPhone.length !== 10) return "Phone number must be exactly 10 digits.";
+        if (!/^[6-9]\d{9}$/.test(cleanPhone)) return "Please enter a valid 10-digit Indian mobile number.";
+        return "";
+      }
+      case "address": {
+        const trimmedAddress = value.trim();
+        if (!trimmedAddress) return "Street address is required.";
+        if (trimmedAddress.length < 8) return "Please enter a complete street address (minimum 8 characters).";
+        return "";
+      }
+      case "pincode": {
+        const cleanPin = value.replace(/\D/g, "");
+        if (!value.trim()) return "PIN code is required.";
+        if (cleanPin.length !== 6) return "PIN code must be exactly 6 digits.";
+        if (!/^[1-9]\d{5}$/.test(cleanPin)) return "Please enter a valid 6-digit Indian PIN code.";
+        return "";
+      }
+      case "cityCustom": {
+        const trimmedCustom = value.trim();
+        if (!trimmedCustom) return "City name is required.";
+        if (trimmedCustom.length < 2) return "City name must be at least 2 characters.";
+        if (!/^[a-zA-Z\s]+$/.test(trimmedCustom)) return "City name can only contain letters and spaces.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (field) => {
+    const errMsg = validateField(field, f[field]);
+    if (errMsg || errors[field]) {
+      setErrors((e) => ({ ...e, [field]: errMsg }));
+    }
   };
 
   const handleStateChange = (st) => {
@@ -69,63 +119,29 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
   const validate = () => {
     const e = {};
     
-    // Name validation
-    const trimmedName = f.name.trim();
-    if (!trimmedName) {
-      e.name = "Full name is required.";
-    } else if (trimmedName.length < 2) {
-      e.name = "Full name must be at least 2 characters.";
-    } else if (!/^[a-zA-Z\s]+$/.test(trimmedName)) {
-      e.name = "Full name can only contain letters and spaces.";
-    }
+    const nameErr = validateField("name", f.name);
+    if (nameErr) e.name = nameErr;
 
-    // Phone validation
-    const cleanPhone = f.phone.replace(/\D/g, "");
-    if (!f.phone.trim()) {
-      e.phone = "Phone number is required.";
-    } else if (cleanPhone.length !== 10) {
-      e.phone = "Phone number must be exactly 10 digits.";
-    } else if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      e.phone = "Please enter a valid 10-digit Indian mobile number.";
-    }
+    const phoneErr = validateField("phone", f.phone);
+    if (phoneErr) e.phone = phoneErr;
 
-    // Address validation
-    const trimmedAddress = f.address.trim();
-    if (!trimmedAddress) {
-      e.address = "Street address is required.";
-    } else if (trimmedAddress.length < 8) {
-      e.address = "Please enter a complete street address (minimum 8 characters).";
-    }
+    const addrErr = validateField("address", f.address);
+    if (addrErr) e.address = addrErr;
 
-    // State validation
+    const pinErr = validateField("pincode", f.pincode);
+    if (pinErr) e.pincode = pinErr;
+
     if (!f.state) {
       e.state = "Please select your state.";
     }
 
-    // City validation
     if (!f.state) {
       e.city = "Please select a state first.";
     } else if (!f.city) {
       e.city = "Please select your city.";
     } else if (f.city === "Other") {
-      const trimmedCustom = f.cityCustom.trim();
-      if (!trimmedCustom) {
-        e.cityCustom = "City name is required.";
-      } else if (trimmedCustom.length < 2) {
-        e.cityCustom = "City name must be at least 2 characters.";
-      } else if (!/^[a-zA-Z\s]+$/.test(trimmedCustom)) {
-        e.cityCustom = "City name can only contain letters and spaces.";
-      }
-    }
-
-    // PIN code validation
-    const cleanPin = f.pincode.replace(/\D/g, "");
-    if (!f.pincode.trim()) {
-      e.pincode = "PIN code is required.";
-    } else if (cleanPin.length !== 6) {
-      e.pincode = "PIN code must be exactly 6 digits.";
-    } else if (!/^[1-9]\d{5}$/.test(cleanPin)) {
-      e.pincode = "Please enter a valid 6-digit Indian PIN code.";
+      const cityErr = validateField("cityCustom", f.cityCustom);
+      if (cityErr) e.cityCustom = cityErr;
     }
 
     setErrors(e);
@@ -151,19 +167,19 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
         Full name <span style={{ color: "var(--accent)" }}>*</span>
       </label>
-      <input className="ec-input" style={{ marginBottom: errors.name ? 0 : 12, ...errBorder(errors.name) }} placeholder="e.g. Daksh Agarwal" value={f.name} onChange={(e) => set("name", e.target.value)} />
+      <input className="ec-input" style={{ marginBottom: errors.name ? 0 : 12, ...errBorder(errors.name) }} placeholder="e.g. Daksh Agarwal" value={f.name} onChange={(e) => set("name", e.target.value)} onBlur={() => handleBlur("name")} />
       <FieldError msg={errors.name} />
 
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
         Phone number <span style={{ color: "var(--accent)" }}>*</span>
       </label>
-      <input className="ec-input" inputMode="numeric" style={{ marginBottom: errors.phone ? 0 : 12, ...errBorder(errors.phone) }} placeholder="e.g. 9876543210" value={f.phone} onChange={(e) => set("phone", e.target.value)} />
+      <input className="ec-input" inputMode="numeric" style={{ marginBottom: errors.phone ? 0 : 12, ...errBorder(errors.phone) }} placeholder="e.g. 9876543210" value={f.phone} onChange={(e) => set("phone", e.target.value)} onBlur={() => handleBlur("phone")} />
       <FieldError msg={errors.phone} />
 
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
         Street address <span style={{ color: "var(--accent)" }}>*</span>
       </label>
-      <input className="ec-input" style={{ marginBottom: errors.address ? 0 : 12, ...errBorder(errors.address) }} placeholder="house no, area, landmark" value={f.address} onChange={(e) => set("address", e.target.value)} />
+      <input className="ec-input" style={{ marginBottom: errors.address ? 0 : 12, ...errBorder(errors.address) }} placeholder="house no, area, landmark" value={f.address} onChange={(e) => set("address", e.target.value)} onBlur={() => handleBlur("address")} />
       <FieldError msg={errors.address} />
 
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: errors.city || errors.state || errors.cityCustom ? 0 : 12 }}>
@@ -206,6 +222,7 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
                 placeholder="Enter your city name"
                 value={f.cityCustom}
                 onChange={(e) => set("cityCustom", e.target.value)}
+                onBlur={() => handleBlur("cityCustom")}
               />
               <FieldError msg={errors.cityCustom} />
             </>
@@ -224,6 +241,7 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
         placeholder="e.g. 302001"
         value={f.pincode}
         onChange={(e) => set("pincode", e.target.value)}
+        onBlur={() => handleBlur("pincode")}
       />
       <FieldError msg={errors.pincode} />
 
