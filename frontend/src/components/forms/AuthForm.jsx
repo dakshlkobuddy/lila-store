@@ -82,7 +82,10 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
         await onLogin(f.email, f.password);
       } else {
         const result = await onRegister(f.name, f.email, f.password);
-        if (!result?.error && result?.needsVerification) {
+        if (result?.error?.code === "email_exists") {
+          // Show red error directly under email field
+          setErrors(e => ({ ...e, email: "This email is already registered. Please login instead." }));
+        } else if (!result?.error && result?.needsVerification) {
           setPendingEmail(result.email);
           startCooldown();
         }

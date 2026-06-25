@@ -348,15 +348,30 @@ export default function useStore() {
       return { error: { message: "Missing fields" } };
     }
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: { data: { name } },
     });
 
     if (error) {
+      // Supabase returns this error when enumeration protection is OFF
+      // and the email already exists (confirmed OR unconfirmed)
+      if (
+        error.message?.toLowerCase().includes("user already registered") ||
+        error.message?.toLowerCase().includes("already registered") ||
+        error.message?.toLowerCase().includes("already exists")
+      ) {
+        return { error: { message: "Email already registered", code: "email_exists" } };
+      }
       notify(error.message || "Registration failed", "warn");
       return { error };
+    }
+
+    // Fallback: Supabase returns user with empty identities when email
+    // already exists AND enumeration protection is ON (for confirmed users)
+    if (data.user && data.user.identities && data.user.identities.length === 0) {
+      return { error: { message: "Email already registered", code: "email_exists" } };
     }
 
     notify("Verification email sent! Check your inbox.");
