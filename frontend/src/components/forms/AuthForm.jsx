@@ -5,7 +5,7 @@ import { isEmail } from "../../lib/validation.js";
 
 const RESEND_COOLDOWN = 60; // seconds
 
-export default function AuthForm({ onLogin, onRegister, onResendVerification }) {
+export default function AuthForm({ onLogin, onRegister, onResendVerification, onForgotPassword }) {
   const [mode, setMode] = useState("login");
   const [f, setF] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
@@ -99,17 +99,24 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
     if (cooldown > 0 || busy) return;
     setBusy(true);
     try {
-      const result = await onResendVerification(pendingEmail);
+      let result;
+      if (mode === "forgot-password") {
+        result = await onForgotPassword(pendingEmail);
+      } else {
+        result = await onResendVerification(pendingEmail);
+      }
       if (!result?.error) startCooldown();
     } finally {
       setBusy(false);
     }
   };
 
-  const switchMode = () => {
-    setMode(mode === "login" ? "register" : "login");
+  const switchMode = (newMode) => {
+    setMode(newMode);
     setErrors({});
-    setF({ name: "", email: "", password: "", confirmPassword: "" });
+    if (newMode === "login" || newMode === "register") {
+      setF({ name: "", email: "", password: "", confirmPassword: "" });
+    }
     setShowPwd(false);
     setShowConfirmPwd(false);
   };
@@ -196,7 +203,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
           </h2>
 
           <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 1.65, marginBottom: 6 }}>
-            We sent a verification link to:
+            We sent a {mode === "forgot-password" ? "password reset" : "verification"} link to:
           </p>
 
           {/* Email display pill */}
@@ -210,7 +217,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
           </div>
 
           <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 28, lineHeight: 1.6 }}>
-            Click the link in the email to activate your account.{" "}
+            Click the link in the email to {mode === "forgot-password" ? "reset your password" : "activate your account"}.{" "}
             <strong style={{ color: "rgba(255,255,255,0.85)" }}>
               It expires in 15 minutes.
             </strong>
@@ -262,7 +269,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
             id="change-email-btn"
             onClick={() => {
               setPendingEmail(null);
-              setMode("register");
+              setMode(mode === "forgot-password" ? "forgot-password" : "register");
               setF(p => ({ ...p, password: "" }));
               clearInterval(cooldownRef.current);
               setCooldown(0);
@@ -287,7 +294,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
 
           {/* Already verified? */}
           <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.55)", margin: 0 }}>
-            Already verified?{" "}
+            {mode === "forgot-password" ? "Remembered your password? " : "Already verified? "}
             <span
               style={{ color: "#fff", fontWeight: 600, cursor: "pointer" }}
               onClick={() => {
@@ -314,8 +321,14 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
 
       <div style={cardStyle}>
         <h2 style={{ textAlign: "center", fontSize: 32, fontWeight: 600, marginBottom: "32px", letterSpacing: "0.5px" }}>
-          {mode === "login" ? "Login" : "Register"}
+          {mode === "login" ? "Login" : mode === "register" ? "Register" : "Reset Password"}
         </h2>
+
+        {mode === "forgot-password" && (
+          <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.75)", marginBottom: 24, lineHeight: 1.5 }}>
+            Enter your email address and we'll send you a link to reset your password.
+          </p>
+        )}
 
         {mode === "register" && (
           <div style={{ marginBottom: "16px" }}>
@@ -349,52 +362,53 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
           {errors.email && <div style={{ color: "#ff6b6b", fontSize: 13, marginTop: 6, paddingLeft: 4 }}>{errors.email}</div>}
         </div>
 
-        <div style={{ marginBottom: mode === "register" ? "12px" : "24px" }}>
-          <div style={{ position: "relative" }}>
-            <input
-              className="glass-input"
-              style={{ ...inputStyle(errors.password), paddingRight: 44 }}
-              type={showPwd ? "text" : "password"}
-              placeholder={mode === "register" ? "New Password" : "Password"}
-              value={f.password}
-              onChange={(e) => set("password", e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && mode === "login" && submit()}
-              disabled={busy}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPwd((v) => !v)}
-              style={{
-                position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
-                background: "none", border: "none", cursor: "pointer", padding: 0,
-                color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center",
-              }}
-              tabIndex={-1}
-            >
-              {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-          {errors.password && <div style={{ color: "#ff6b6b", fontSize: 13, marginTop: 6, paddingLeft: 4 }}>{errors.password}</div>}
+        {mode !== "forgot-password" && (
+          <div style={{ marginBottom: mode === "register" ? "12px" : "24px" }}>
+            <div style={{ position: "relative" }}>
+              <input
+                className="glass-input"
+                style={{ ...inputStyle(errors.password), paddingRight: 44 }}
+                type={showPwd ? "text" : "password"}
+                placeholder={mode === "register" ? "New Password" : "Password"}
+                value={f.password}
+                onChange={(e) => set("password", e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && mode === "login" && submit()}
+                disabled={busy}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                style={{
+                  position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+                  background: "none", border: "none", cursor: "pointer", padding: 0,
+                  color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center",
+                }}
+                tabIndex={-1}
+              >
+                {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.password && <div style={{ color: "#ff6b6b", fontSize: 13, marginTop: 6, paddingLeft: 4 }}>{errors.password}</div>}
 
-          {/* Password strength bar — only in register mode */}
-          {mode === "register" && f.password && (() => {
-            const { score, label, color } = getPasswordStrength(f.password);
-            return (
-              <div style={{ marginTop: 10 }}>
-                <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
-                  {[0,1,2,3].map(i => (
-                    <div key={i} style={{
-                      flex: 1, height: 4, borderRadius: 4,
-                      background: i < score ? color : "rgba(255,255,255,0.15)",
-                      transition: "background 0.3s ease",
-                    }} />
-                  ))}
+            {mode === "register" && f.password && (() => {
+              const { score, label, color } = getPasswordStrength(f.password);
+              return (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                    {[0,1,2,3].map(i => (
+                      <div key={i} style={{
+                        flex: 1, height: 4, borderRadius: 4,
+                        background: i < score ? color : "rgba(255,255,255,0.15)",
+                        transition: "background 0.3s ease",
+                      }} />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 12, color, fontWeight: 500, paddingLeft: 2 }}>{label}</div>
                 </div>
-                <div style={{ fontSize: 12, color, fontWeight: 500, paddingLeft: 2 }}>{label}</div>
-              </div>
-            );
-          })()}
-        </div>
+              );
+            })()}
+          </div>
+        )}
 
         {/* Confirm Password — only in register mode */}
         {mode === "register" && (
@@ -433,7 +447,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
               <input type="checkbox" style={{ accentColor: "#fff", width: 16, height: 16, cursor: "pointer" }} />
               Remember me
             </label>
-            <span style={{ cursor: "pointer", transition: "color 0.2s" }} onMouseOver={e => e.target.style.color = "#fff"} onMouseOut={e => e.target.style.color = "rgba(255,255,255,0.8)"}>
+            <span style={{ cursor: "pointer", transition: "color 0.2s" }} onMouseOver={e => e.target.style.color = "#fff"} onMouseOut={e => e.target.style.color = "rgba(255,255,255,0.8)"} onClick={() => switchMode("forgot-password")}>
               Forgot Password?
             </span>
           </div>
@@ -462,15 +476,24 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification }) 
           onMouseDown={e => { if (!busy) e.currentTarget.style.transform = "scale(0.98)"; }}
           onMouseUp={e => { if (!busy) e.currentTarget.style.transform = "scale(1)"; }}
           onMouseLeave={e => { if (!busy) e.currentTarget.style.transform = "scale(1)"; }}
-          onClick={submit}
+          onClick={mode === "forgot-password" ? async () => {
+            if (!isEmail(f.email)) return setErrors({ email: "Enter a valid email address" });
+            setBusy(true);
+            const res = await onForgotPassword(f.email);
+            setBusy(false);
+            if (!res?.error) {
+              setPendingEmail(f.email);
+              startCooldown();
+            }
+          } : submit}
           disabled={busy}
         >
-          {busy ? <Loader size={18} style={{ animation: "ecSpin 1s linear infinite" }} /> : (mode === "login" ? "Login" : "Register")}
+          {busy ? <Loader size={18} style={{ animation: "ecSpin 1s linear infinite" }} /> : (mode === "login" ? "Login" : mode === "register" ? "Register" : "Send Reset Link")}
         </button>
 
         <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 24 }}>
-          {mode === "login" ? "Don't have an account? " : "Already have an account? "}
-          <span style={{ color: "#fff", fontWeight: 600, cursor: "pointer" }} onClick={switchMode}>
+          {mode === "login" ? "Don't have an account? " : mode === "register" ? "Already have an account? " : "Remembered your password? "}
+          <span style={{ color: "#fff", fontWeight: 600, cursor: "pointer" }} onClick={() => switchMode(mode === "login" ? "register" : "login")}>
             {mode === "login" ? "Register" : "Login"}
           </span>
         </p>

@@ -20,6 +20,7 @@ export default function useStore() {
   const [adminTab, setAdminTab] = useState("overview");
   const [editingProduct, setEditingProduct] = useState(null);
   const [showForm, setShowForm] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   const [lastOrder, setLastOrder] = useState(null);
   const [sort, setSort] = useState("featured");
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -405,6 +406,29 @@ export default function useStore() {
     notify("Signed out");
   };
 
+  const sendPasswordResetEmail = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/#type=recovery`,
+    });
+    if (error) {
+      notify(error.message || "Failed to send reset link", "warn");
+      return { error };
+    }
+    notify("Password reset link sent! Check your email.");
+    return { error: null };
+  };
+
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      notify(error.message || "Failed to update password", "warn");
+      return { error };
+    }
+    notify("Password updated successfully!");
+    setShowPasswordReset(false);
+    return { error: null };
+  };
+
   // ── Orders ────────────────────────────────────────────────
   const loadOrders = async () => {
     if (!currentUser) return;
@@ -670,10 +694,10 @@ export default function useStore() {
     // state
     products, orders, cart, currentUser, loading, route, toast,
     query, cat, menuOpen, adminTab, editingProduct, showForm, lastOrder,
-    sort, inStockOnly, maxPrice, showFilters, isDark,
+    sort, inStockOnly, maxPrice, showFilters, isDark, showPasswordReset,
     // setters
     setQuery, setCat, setMenuOpen, setAdminTab, setEditingProduct, setShowForm,
-    setSort, setInStockOnly, setMaxPrice, setShowFilters,
+    setSort, setInStockOnly, setMaxPrice, setShowFilters, setShowPasswordReset,
     // derived
     cartDetailed, cartCount, cartTotal, visibleProducts, isAdmin,
     revenue, lowStock, outStock, priceCeiling, priceCap,
@@ -682,6 +706,6 @@ export default function useStore() {
     login, register, logout, resendVerification, placeOrder, placeOrderOnline,
     saveProduct, toggleProduct, setOrderStatus, toggleDark,
     uploadProductImage, deleteProductImage,
-    loadProducts, loadCart, loadOrders,
+    loadProducts, loadCart, loadOrders, sendPasswordResetEmail, updatePassword,
   };
 }

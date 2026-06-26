@@ -8,6 +8,7 @@ import Footer from "./components/Footer.jsx";
 import Toast from "./components/Toast.jsx";
 import WhatsAppButton from "./components/WhatsAppButton.jsx";
 import AuthForm from "./components/forms/AuthForm.jsx";
+import UpdatePasswordModal from "./components/forms/UpdatePasswordModal.jsx";
 
 import HomePage from "./pages/HomePage.jsx";
 import ProductDetailPage from "./pages/ProductDetailPage.jsx";
@@ -33,7 +34,7 @@ function CurrentPage({ store }) {
 
 export default function App() {
   const store = useStore();
-  const { currentUser, isAdmin, toast, login, register, resendVerification, loading, isDark, notify } = store;
+  const { currentUser, isAdmin, toast, login, register, resendVerification, loading, isDark, notify, showPasswordReset, setShowPasswordReset, sendPasswordResetEmail, updatePassword } = store;
 
   // Handle email verification links (Supabase adds hash fragment on redirect)
   useEffect(() => {
@@ -52,10 +53,14 @@ export default function App() {
       window.history.replaceState(null, "", window.location.pathname);
     } else if (type === "signup" || type === "recovery") {
       // Successfully verified and logged in!
-      setTimeout(() => notify("Email verified successfully! You are logged in."), 500);
+      if (type === "recovery") {
+        setShowPasswordReset(true);
+      } else {
+        setTimeout(() => notify("Email verified successfully! You are logged in."), 500);
+      }
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [notify]);
+  }, [notify, setShowPasswordReset]);
 
   // Show a loading indicator while checking auth session
   if (loading) {
@@ -79,7 +84,7 @@ export default function App() {
     return (
       <div className={`ec-root ${isDark ? "dark" : ""}`}>
         <GlobalStyles />
-        <AuthForm onLogin={login} onRegister={register} onResendVerification={resendVerification} />
+        <AuthForm onLogin={login} onRegister={register} onResendVerification={resendVerification} onForgotPassword={sendPasswordResetEmail} />
         <Toast toast={toast} />
       </div>
     );
@@ -89,6 +94,10 @@ export default function App() {
     <div className={`ec-root ${isDark ? "dark" : ""}`}>
       <GlobalStyles />
       <Header store={store} />
+
+      {showPasswordReset && (
+        <UpdatePasswordModal onUpdate={updatePassword} onClose={() => setShowPasswordReset(false)} />
+      )}
 
       <main className="ec-wrap" style={{ ...wrap(), paddingTop: 28, paddingBottom: 70 }}>
         <CurrentPage store={store} />
