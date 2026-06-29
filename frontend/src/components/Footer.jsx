@@ -2,9 +2,10 @@ import { BRAND, WHATSAPP_NUMBER } from "../constants.js";
 import { wrap } from "../lib/ui.js";
 import { MessageCircle, Phone, Heart } from "lucide-react";
 
-export default function Footer() {
+export default function Footer({ store }) {
   const waUrl = `https://wa.me/${WHATSAPP_NUMBER}`;
   const year = new Date().getFullYear();
+  const go = store?.go || (() => {});
 
   return (
     <footer style={{ borderTop: "1px solid var(--line)", background: "var(--bg2)", marginTop: 32 }}>
@@ -29,9 +30,10 @@ export default function Footer() {
         {/* Policies */}
         <div>
           <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", color: "var(--ink-soft)", marginBottom: 10, textTransform: "uppercase" }}>Info</div>
-          {["Cash on Delivery", "Easy Returns (7 days)", "Secure Checkout", "Size Guide available on request"].map((item) => (
-            <div key={item} style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 5 }}>{item}</div>
-          ))}
+          <div className="ec-link" style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 8, display: "block" }} onClick={() => go("about")}>About Us</div>
+          <div className="ec-link" style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 8, display: "block" }} onClick={() => go("contact")}>Contact Us</div>
+          <div className="ec-link" style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 8, display: "block" }} onClick={() => go("privacy")}>Privacy Policy</div>
+          <div className="ec-link" style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 8, display: "block" }} onClick={() => go("returns")}>Return & Refund Policy</div>
         </div>
 
         {/* Contact */}

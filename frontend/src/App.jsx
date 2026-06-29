@@ -18,10 +18,16 @@ import OrdersPage from "./pages/OrdersPage.jsx";
 import ConfirmationPage from "./pages/ConfirmationPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
+import WishlistPage from "./pages/WishlistPage.jsx";
+import InfoPage from "./pages/InfoPage.jsx";
 
 // Picks which page to render based on the current route.
 function CurrentPage({ store }) {
   switch (store.route.name) {
+    case "about":
+    case "contact":
+    case "privacy":
+    case "returns": return <InfoPage key={store.route.id} store={store} />;
     case "product": return <ProductDetailPage key={store.route.id} store={store} />;
     case "cart": return <CartPage store={store} />;
     case "checkout": return <CheckoutPage store={store} />;
@@ -29,6 +35,7 @@ function CurrentPage({ store }) {
     case "confirmation": return <ConfirmationPage store={store} />;
     case "admin": return <AdminPage store={store} />;
     case "profile": return <ProfilePage store={store} />;
+    case "wishlist": return <WishlistPage store={store} />;
     case "home":
     default: return <HomePage store={store} />;
   }
@@ -105,7 +112,7 @@ export default function App() {
         <CurrentPage store={store} />
       </main>
 
-      <Footer />
+      <Footer store={store} />
 
       {!isAdmin && <WhatsAppButton />}
       <Toast toast={toast} />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   TrendingUp, Box, ClipboardList, AlertTriangle, Plus, Pencil,
-  Power, PowerOff, MapPin, Phone, X,
+  Power, PowerOff, MapPin, Phone, X, Users
 } from "lucide-react";
 import { STATUS_FLOW, STATUS_COLOR } from "../constants.js";
 import { money } from "../lib/format.js";
@@ -11,6 +11,7 @@ import StockBadge from "../components/StockBadge.jsx";
 import ProductImage from "../components/ProductImage.jsx";
 import Empty from "../components/Empty.jsx";
 import ProductForm from "../components/forms/ProductForm.jsx";
+import SalesChart from "../components/SalesChart.jsx";
 import { s } from "./AdminPage.styles.js";
 
 // ── Confirm Deactivate Modal ──────────────────────────────────
@@ -63,7 +64,7 @@ function ConfirmModal({ productName, isActive, onConfirm, onCancel }) {
 export default function AdminPage({ store }) {
   const {
     isAdmin, go, adminTab, setAdminTab,
-    revenue, orders, products, lowStock, outStock,
+    revenue, orders, products, users, lowStock, outStock,
     showForm, setShowForm, editingProduct, setEditingProduct,
     saveProduct, toggleProduct, setOrderStatus,
     uploadProductImage, deleteProductImage,
@@ -99,7 +100,7 @@ export default function AdminPage({ store }) {
       </div>
 
       <div className="ec-scroll" style={s.tabsRow}>
-        {[["overview", "Overview", TrendingUp], ["products", "Products", Box], ["orders", "Orders", ClipboardList]].map(([k, label, Icon]) => (
+        {[["overview", "Overview", TrendingUp], ["users", "Users", Users], ["products", "Products", Box], ["orders", "Orders", ClipboardList]].map(([k, label, Icon]) => (
           <span key={k} className={"ec-chip" + (adminTab === k ? " ec-chip-on" : "")} onClick={() => setAdminTab(k)} style={s.tab}>
             <Icon size={15} /> {label}
           </span>
@@ -108,6 +109,7 @@ export default function AdminPage({ store }) {
 
       {adminTab === "overview" && (
         <>
+          <SalesChart orders={orders} />
           <div className="ec-stat-grid" style={grid(180)}>
             <Stat label="Revenue" value={money(revenue)} icon={TrendingUp} color="var(--sage)" />
             <Stat label="Orders" value={orders.length} icon={ClipboardList} color="var(--accent)" />
@@ -125,6 +127,52 @@ export default function AdminPage({ store }) {
             </div>
           )}
         </>
+      )}
+
+      {adminTab === "users" && (
+        <div className="ec-card" style={{ overflow: "hidden" }}>
+          <div style={{ padding: 20, borderBottom: "1px solid var(--line)" }}>
+            <h3 className="ec-disp" style={{ margin: 0, fontSize: 20 }}>Registered Users</h3>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: "rgba(0,0,0,0.02)", textAlign: "left", color: "var(--ink-soft)" }}>
+                  <th style={{ padding: "12px 20px", fontWeight: 600 }}>Name</th>
+                  <th style={{ padding: "12px 20px", fontWeight: 600 }}>Role</th>
+                  <th style={{ padding: "12px 20px", fontWeight: 600 }}>Registered</th>
+                  <th style={{ padding: "12px 20px", fontWeight: 600 }}>Total Orders</th>
+                  <th style={{ padding: "12px 20px", fontWeight: 600, textAlign: "right" }}>Lifetime Value</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users && users.length > 0 ? users.map(user => {
+                  const userOrders = orders.filter(o => o.user_id === user.id && o.status !== "Cancelled");
+                  const totalSpent = userOrders.reduce((sum, o) => sum + Number(o.total || 0), 0);
+                  return (
+                    <tr key={user.id} style={{ borderBottom: "1px solid var(--line)" }}>
+                      <td style={{ padding: "16px 20px", fontWeight: 500 }}>{user.name}</td>
+                      <td style={{ padding: "16px 20px" }}>
+                        <span style={{ 
+                          background: user.role === "admin" ? "var(--accent)22" : "var(--sage)22", 
+                          color: user.role === "admin" ? "var(--accent)" : "var(--sage)", 
+                          padding: "4px 8px", borderRadius: 999, fontSize: 12, fontWeight: 700 
+                        }}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: "16px 20px", color: "var(--ink-soft)" }}>{new Date(user.created_at).toLocaleDateString("en-IN")}</td>
+                      <td style={{ padding: "16px 20px" }}>{userOrders.length}</td>
+                      <td style={{ padding: "16px 20px", textAlign: "right", fontWeight: 600 }}>{money(totalSpent)}</td>
+                    </tr>
+                  );
+                }) : (
+                  <tr><td colSpan="5" style={{ padding: 40, textAlign: "center", color: "var(--ink-soft)" }}>No users found.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       )}
 
       {adminTab === "products" && (

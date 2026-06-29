@@ -9,7 +9,9 @@ export default function useStore() {
   // ── UI state ───────────────────────────────────────────────
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
   const [cart, setCart] = useState([]);
+  const [wishlist, setWishlist] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -113,10 +115,15 @@ export default function useStore() {
   useEffect(() => {
     if (currentUser) {
       loadCart();
+      loadWishlist();
       loadOrders();
       loadAddresses();
+      if (isAdmin) {
+        loadUsers();
+      }
     } else {
       setCart([]);
+      setWishlist([]);
       setOrders([]);
       setAddresses([]);
     }
@@ -535,6 +542,75 @@ export default function useStore() {
     await loadAddresses();
   };
 
+  // ── Wishlist ──────────────────────────────────────────────
+  const loadWishlist = async () => {
+    if (!currentUser) return;
+    const { data } = await supabase
+      .from("wishlists")
+      .select("product_id")
+      .eq("user_id", currentUser.id);
+    if (data) {
+      setWishlist(data.map(w => w.product_id));
+    }
+  };
+
+  const toggleWishlist = async (productId) => {
+    if (!currentUser) {
+      notify("Please sign in to save items", "warn");
+      return;
+    }
+    
+    const isSaved = wishlist.includes(productId);
+    if (isSaved) {
+      setWishlist(prev => prev.filter(id => id !== productId));
+      await supabase.from("wishlists").delete().match({ user_id: currentUser.id, product_id: productId });
+      notify("Removed from wishlist");
+    } else {
+      setWishlist(prev => [...prev, productId]);
+      await supabase.from("wishlists").insert({ user_id: currentUser.id, product_id: productId });
+      notify("Added to wishlist");
+    }
+  };
+
+  // ── Reviews ───────────────────────────────────────────────
+  const loadReviews = async (productId) => {
+    const { data, error } = await supabase
+      .from("reviews")
+      .select("*, profiles(name)")
+      .eq("product_id", productId)
+      .order("created_at", { ascending: false });
+    return { data, error };
+  };
+
+  const checkHasPurchased = async (productId) => {
+    if (!currentUser) return false;
+    const { data } = await supabase.rpc("has_purchased", { uid: currentUser.id, pid: productId });
+    return !!data;
+  };
+
+  const submitReview = async (productId, rating, comment) => {
+    if (!currentUser) return { error: { message: "Not logged in" } };
+    
+    const { error } = await supabase
+      .from("reviews")
+      .upsert({
+        user_id: currentUser.id,
+        product_id: productId,
+        rating,
+        comment
+      }, { onConflict: "user_id, product_id" });
+
+    if (error) {
+      notify(error.message || "Failed to submit review", "warn");
+      return { error };
+    }
+    
+    notify("Review submitted successfully!");
+    // Refresh products so the new avg rating/count is reflected in the product list
+    await loadProducts();
+    return { error: null };
+  };
+
   const sendPasswordResetEmail = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: `${window.location.origin}/#type=recovery`,
@@ -574,6 +650,16 @@ export default function useStore() {
 
     const { data, error } = await q;
     if (!error && data) setOrders(data);
+  };
+
+  const loadUsers = async () => {
+    if (!isAdmin) return;
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (!error && data) setUsers(data);
   };
 
   // ── COD flow ─────────────────────────────────────────────
@@ -821,7 +907,7 @@ export default function useStore() {
 
   return {
     // state
-    products, orders, cart, currentUser, loading, route, toast,
+    products, orders, users, cart, wishlist, currentUser, loading, route, toast,
     query, cat, menuOpen, adminTab, editingProduct, showForm, lastOrder,
     sort, inStockOnly, maxPrice, showFilters, isDark, showPasswordReset, addresses,
     // setters
@@ -835,7 +921,8 @@ export default function useStore() {
     login, register, logout, resendVerification, placeOrder, placeOrderOnline,
     saveProduct, toggleProduct, setOrderStatus, toggleDark,
     uploadProductImage, deleteProductImage,
-    loadProducts, loadCart, loadOrders, sendPasswordResetEmail, updatePassword,
+    loadProducts, loadCart, loadOrders, loadUsers, sendPasswordResetEmail, updatePassword,
     updateProfile, loadAddresses, saveAddress, deleteAddress, setDefaultAddress,
+    loadWishlist, toggleWishlist, loadReviews, checkHasPurchased, submitReview,
   };
 }

@@ -1,4 +1,4 @@
-import { ShoppingBag, ShoppingCart, X, Menu, User, LogOut, LayoutDashboard, Moon, Sun } from "lucide-react";
+import { ShoppingBag, ShoppingCart, X, Menu, User, LogOut, LayoutDashboard, Moon, Sun, Heart } from "lucide-react";
 import { BRAND } from "../constants.js";
 import { wrap, navItem } from "../lib/ui.js";
 import Badge from "./Badge.jsx";
@@ -11,6 +11,7 @@ export default function Header({ store }) {
     <>
       <span className="ec-link" style={navItem(route.name === "home")} onClick={() => go("home")}>Shop</span>
       {currentUser && <span className="ec-link" style={navItem(route.name === "orders")} onClick={() => go("orders")}>My Orders</span>}
+      {currentUser && !isAdmin && <span className="ec-link" style={navItem(route.name === "wishlist")} onClick={() => go("wishlist")}><Heart size={15} /> Wishlist</span>}
       {currentUser && !isAdmin && <span className="ec-link" style={navItem(route.name === "profile")} onClick={() => go("profile")}><User size={15} /> My Account</span>}
       {isAdmin && <span className="ec-link" style={navItem(route.name === "admin")} onClick={() => go("admin")}><LayoutDashboard size={15} /> Dashboard</span>}
       {currentUser

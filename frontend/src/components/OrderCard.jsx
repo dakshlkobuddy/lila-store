@@ -1,6 +1,7 @@
 import { STATUS_COLOR, STATUS_FLOW } from "../constants.js";
 import { money } from "../lib/format.js";
-import { CheckCircle2, Circle, Clock } from "lucide-react";
+import { CheckCircle2, Circle, Clock, FileText } from "lucide-react";
+import { generateInvoice } from "../lib/pdf.js";
 
 // One order row in the customer's "My orders" list.
 export default function OrderCard({ o }) {
@@ -70,12 +71,18 @@ export default function OrderCard({ o }) {
         </div>
       )}
 
-      {/* Total */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-        <span style={{ fontSize: 13, color: "var(--ink-soft)", display: "flex", alignItems: "center", gap: 5 }}>
-          <Clock size={13} /> Placed {new Date(o.created_at).toLocaleTimeString("en-IN", { timeStyle: "short" })}
-        </span>
-        <span style={{ fontWeight: 700, fontSize: 15 }}>{money(o.total)}</span>
+      {/* Footer */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 14 }}>
+        <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>
+          Total <span className="ec-disp" style={{ color: "var(--ink)", fontSize: 18, marginLeft: 6 }}>{money(o.total)}</span>
+        </div>
+        <button 
+          className="ec-btn ec-btn-ghost" 
+          style={{ padding: "6px 12px", fontSize: 13, color: "var(--accent)", border: "1px solid var(--line)", background: "var(--surface)" }}
+          onClick={() => generateInvoice(o)}
+        >
+          <FileText size={14} /> Download Invoice
+        </button>
       </div>
     </div>
   );
