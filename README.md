@@ -7,21 +7,26 @@ A full-stack women's wear storefront built with **React + Vite** (frontend), **S
 ## What's Built
 
 ### Customer Features
-- **Auth** — Register, login, logout (Supabase Auth). Role-based: admin vs customer detected automatically on sign-in.
+- **Auth (OTP Verification)** — Register, login, logout, and password reset using secure 6-digit email OTPs. Role-based: admin vs customer detected automatically on sign-in.
 - **Product Catalog** — Browse all active products with search, category filters, price range slider, in-stock filter, and sort (featured / price low-high / price high-low).
 - **Product Detail Page** — View product description, pick size and colour variants, add to cart.
+  - **Reviews & Ratings:** Customers who have purchased a product can leave a star rating and review.
+  - **Related Products:** "You may also like" section showcasing other products in the same category.
+- **Wishlist** — "Save for later" feature allowing users to heart products and view them in a dedicated Wishlist page.
 - **Cart** — Add items, update quantities (capped at stock), remove items. Persists in Supabase DB (not localStorage).
-- **Checkout** — Enter shipping details. Choose between:
+- **Checkout** — Enter shipping details (with auto-saving to address book). Choose between:
   - **Cash on Delivery (COD)** — order placed directly via `place_order()` RPC.
   - **Online Payment (Razorpay)** — full payment flow: Razorpay modal → HMAC-SHA256 server-side verification → order placed only after successful payment.
-- **Order Confirmation** — Summary of placed order with a WhatsApp share button.
-- **My Orders** — View order history with a live status timeline (Pending → Confirmed → Processing → Shipped → Delivered).
+- **Order Confirmation & Invoices** — Summary of placed order with a WhatsApp share button and **PDF Invoice Download**.
+- **My Orders** — View order history with a live status timeline (Pending → Confirmed → Processing → Shipped → Delivered) and invoice download.
+- **Essential Info Pages** — Dedicated pages for About Us, Contact Us, Privacy Policy, and Return/Refund Policy.
 - **WhatsApp Button** — Floating button to contact the store directly.
 - **Dark Mode** — Toggle dark/light theme, saved to localStorage.
 - **Fully Responsive** — Works on mobile, tablet, and desktop.
 
 ### Admin Features (Dashboard)
-- **Overview tab** — Revenue total, order count, active product count, low/out-of-stock alerts with restock list.
+- **Overview tab** — Dynamic **Sales & Revenue Area Chart** (recharts), revenue total, order count, active product count, low/out-of-stock alerts with restock list.
+- **Users tab** — Comprehensive list of all registered customers showing their join date, total orders, and lifetime value.
 - **Products tab** — Table of all products (active + inactive). Add new products, edit existing ones, deactivate/reactivate with confirm modal. Upload product images (Supabase Storage).
 - **Orders tab** — All customer orders with status filter tabs. Change order status via dropdown (Pending → Confirmed → Processing → Shipped → Delivered → Cancelled). See shipping address, phone, and order items inline.
 
@@ -35,8 +40,11 @@ A full-stack women's wear storefront built with **React + Vite** (frontend), **S
 ### Database (Supabase + PostgreSQL)
 | Table | Purpose |
 |---|---|
-| `profiles` | Extends `auth.users` — stores name and role (`customer` / `admin`) |
+| `profiles` | Extends `auth.users` — stores name, role (`customer` / `admin`), and phone |
+| `addresses` | Customer address book |
 | `products` | Product catalog with sizes, colours, stock, image URL, badge, active flag |
+| `reviews` | Product ratings and reviews linked to users |
+| `wishlist_items` | Products saved by users for later |
 | `orders` | Order header — customer, total, shipping JSON, status, payment info |
 | `order_items` | Normalised line items — product snapshot (name + price at time of order) |
 | `cart_items` | Per-user cart rows, unique per (user, product, size, colour) |
@@ -54,10 +62,12 @@ A full-stack women's wear storefront built with **React + Vite** (frontend), **S
 | Layer | Technology |
 |---|---|
 | Frontend | React 18, Vite 8, vanilla CSS-in-JS |
+| Charting | Recharts |
+| PDF Gen | jsPDF, jsPDF-AutoTable |
 | Icons | Lucide React |
 | Backend | Supabase Edge Functions (Deno / TypeScript) |
 | Database | Supabase (PostgreSQL) with RLS |
-| Auth | Supabase Auth |
+| Auth | Supabase Auth (OTP flow) |
 | Storage | Supabase Storage (`product-images` bucket) |
 | Payments | Razorpay (test + live keys supported) |
 
@@ -88,22 +98,24 @@ lila-store/
 │       │   ├── format.js            # money, WhatsApp link, order message
 │       │   ├── ui.js                # layout helpers (grid, wrap)
 │       │   ├── validation.js        # form field validators
-│       │   ├── imageValidation.js   # image file type/size checks
+│       │   ├── pdf.js               # Invoice PDF generator
 │       │   └── storage.js           # Supabase Storage helpers
 │       ├── styles/
 │       │   └── GlobalStyles.jsx     # design tokens, theme, responsive rules
 │       ├── components/
 │       │   ├── Header.jsx           # nav bar with cart count + dark mode toggle
-│       │   ├── Footer.jsx
+│       │   ├── Footer.jsx           # footer with static links
 │       │   ├── Toast.jsx            # notification toasts
 │       │   ├── WhatsAppButton.jsx   # floating WhatsApp CTA
-│       │   ├── OrderCard.jsx        # order row with status timeline
+│       │   ├── ProductCard.jsx      # unified product rendering
+│       │   ├── OrderCard.jsx        # order row with status timeline & PDF download
+│       │   ├── SalesChart.jsx       # admin overview area chart
 │       │   ├── ProductImage.jsx     # image with category-icon fallback
 │       │   ├── StockBadge.jsx       # In stock / Low stock / Out of stock
 │       │   ├── Stat.jsx             # admin stat card
 │       │   ├── Badge.jsx / Pill.jsx / Empty.jsx / FieldError.jsx
 │       │   └── forms/
-│       │       ├── AuthForm.jsx     # login + register tabs
+│       │       ├── AuthForm.jsx     # OTP-based login + register + reset
 │       │       ├── CheckoutForm.jsx # shipping fields + COD/Online buttons
 │       │       └── ProductForm.jsx  # admin add/edit product with image upload
 │       └── pages/
@@ -113,7 +125,9 @@ lila-store/
 │           ├── CheckoutPage.jsx/.styles.js
 │           ├── ConfirmationPage.jsx/.styles.js
 │           ├── OrdersPage.jsx/.styles.js
-│           └── AdminPage.jsx/.styles.js
+│           ├── AdminPage.jsx/.styles.js
+│           ├── WishlistPage.jsx/.styles.js
+│           └── InfoPage.jsx         # static content renderer
 │
 ├── backend/                         # Supabase Edge Functions (Deno / TypeScript)
 │   ├── deno.json
@@ -133,7 +147,9 @@ lila-store/
         ├── 002_seed_products.sql    # sample products
         ├── 003_ensure_profile.sql   # ensure_profile() RPC (self-heal)
         ├── 004_payment_columns.sql  # payment_status, payment_id columns + updated RPC
-        └── 005_notifications_webhook.sql
+        ├── 005_notifications_webhook.sql
+        ├── 006_profile_management.sql # Address book and user profile extension
+        └── 007_wishlist_reviews.sql # Wishlist, reviews, and related functionality
 ```
 
 ---
@@ -182,6 +198,8 @@ supabase/migrations/002_seed_products.sql
 supabase/migrations/003_ensure_profile.sql
 supabase/migrations/004_payment_columns.sql
 supabase/migrations/005_notifications_webhook.sql
+supabase/migrations/006_profile_management.sql
+supabase/migrations/007_wishlist_reviews.sql
 ```
 
 All migrations are idempotent — safe to re-run.
