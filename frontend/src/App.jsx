@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import useStore from "./store/useStore.js";
 import { wrap } from "./lib/ui.js";
 
@@ -43,33 +42,7 @@ function CurrentPage({ store }) {
 
 export default function App() {
   const store = useStore();
-  const { currentUser, isAdmin, toast, login, register, resendVerification, loading, isDark, notify, showPasswordReset, setShowPasswordReset, sendPasswordResetEmail, updatePassword } = store;
-
-  // Handle email verification links (Supabase adds hash fragment on redirect)
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (!hash) return;
-    
-    // Parse hash parameters
-    const params = new URLSearchParams(hash.substring(1));
-    const errorDesc = params.get("error_description");
-    const type = params.get("type");
-
-    if (errorDesc) {
-      // e.g. "Token has expired or is invalid"
-      const msg = errorDesc.replace(/\+/g, " ");
-      setTimeout(() => notify("Verification failed: " + msg, "warn"), 500);
-      window.history.replaceState(null, "", window.location.pathname);
-    } else if (type === "signup" || type === "recovery") {
-      // Successfully verified and logged in!
-      if (type === "recovery") {
-        setShowPasswordReset(true);
-      } else {
-        setTimeout(() => notify("Email verified successfully! You are logged in."), 500);
-      }
-      window.history.replaceState(null, "", window.location.pathname);
-    }
-  }, [notify, setShowPasswordReset]);
+  const { currentUser, isAdmin, toast, login, register, resendVerification, loading, isDark, notify, showPasswordReset, setShowPasswordReset, sendPasswordResetEmail, verifyOtp, updatePassword } = store;
 
   // Show a loading indicator while checking auth session
   if (loading) {
@@ -93,7 +66,7 @@ export default function App() {
     return (
       <div className={`ec-root ${isDark ? "dark" : ""}`}>
         <GlobalStyles />
-        <AuthForm onLogin={login} onRegister={register} onResendVerification={resendVerification} onForgotPassword={sendPasswordResetEmail} />
+        <AuthForm onLogin={login} onRegister={register} onResendVerification={resendVerification} onForgotPassword={sendPasswordResetEmail} onVerifyOtp={verifyOtp} onUpdatePassword={updatePassword} />
         <Toast toast={toast} />
       </div>
     );

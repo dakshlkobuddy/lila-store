@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
-import { Mail, Eye, EyeOff, Lock, User, Loader, RefreshCw } from "lucide-react";
+import { Mail, Eye, EyeOff, Lock, User, Loader, RefreshCw, ShieldCheck } from "lucide-react";
 import { BRAND } from "../../constants.js";
 import { isEmail } from "../../lib/validation.js";
 
 const RESEND_COOLDOWN = 60; // seconds
+const OTP_LENGTH = 6;
 
-export default function AuthForm({ onLogin, onRegister, onResendVerification, onForgotPassword }) {
+export default function AuthForm({ onLogin, onRegister, onResendVerification, onForgotPassword, onVerifyOtp, onUpdatePassword }) {
   const [mode, setMode] = useState("login");
   const [f, setF] = useState({ name: "", email: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState({});
@@ -13,10 +14,19 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Verification screen state
-  const [pendingEmail, setPendingEmail] = useState(null); // null = form, string = check-inbox screen
-  const [cooldown, setCooldown] = useState(0);            // seconds remaining on resend timer
+  // OTP screen state
+  const [pendingEmail, setPendingEmail] = useState(null); // null = form, string = OTP screen
+  const [otp, setOtp] = useState(Array(OTP_LENGTH).fill(""));
+  const [otpError, setOtpError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
   const cooldownRef = useRef(null);
+  const otpRefs = useRef([]);
+
+  // Recovery: after OTP verified, show new password form
+  const [recoveryVerified, setRecoveryVerified] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [newPwdError, setNewPwdError] = useState("");
 
   // Start the 60-second resend cooldown timer
   const startCooldown = () => {
@@ -32,6 +42,13 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
 
   // Cleanup timer on unmount
   useEffect(() => () => clearInterval(cooldownRef.current), []);
+
+  // Auto-focus first OTP input when OTP screen appears
+  useEffect(() => {
+    if (pendingEmail && !recoveryVerified) {
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    }
+  }, [pendingEmail, recoveryVerified]);
 
   const set = (k, v) => { setF((p) => ({ ...p, [k]: v })); setErrors((e) => ({ ...e, [k]: "" })); };
 
@@ -83,12 +100,77 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
       } else {
         const result = await onRegister(f.name, f.email, f.password);
         if (result?.error?.code === "email_exists") {
-          // Show red error directly under email field
           setErrors(e => ({ ...e, email: "This email is already registered. Please login instead." }));
         } else if (!result?.error && result?.needsVerification) {
           setPendingEmail(result.email);
+          setOtp(Array(OTP_LENGTH).fill(""));
+          setOtpError("");
           startCooldown();
         }
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // ── OTP input handlers ──────────────────────────────────────
+  const handleOtpChange = (index, value) => {
+    if (value && !/^\d$/.test(value)) return; // only single digits
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    setOtpError("");
+
+    // Auto-focus next box
+    if (value && index < OTP_LENGTH - 1) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+    if (e.key === "Enter") {
+      handleVerifyOtp();
+    }
+  };
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData("text").trim().replace(/\D/g, "").slice(0, OTP_LENGTH);
+    if (pasteData.length === 0) return;
+    const newOtp = [...otp];
+    for (let i = 0; i < OTP_LENGTH; i++) {
+      newOtp[i] = pasteData[i] || "";
+    }
+    setOtp(newOtp);
+    setOtpError("");
+    // Focus last filled or the next empty
+    const focusIdx = Math.min(pasteData.length, OTP_LENGTH - 1);
+    otpRefs.current[focusIdx]?.focus();
+  };
+
+  const handleVerifyOtp = async () => {
+    const code = otp.join("");
+    if (code.length !== OTP_LENGTH) {
+      setOtpError("Please enter the complete 6-digit OTP.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const type = mode === "forgot-password" ? "recovery" : "signup";
+      const result = await onVerifyOtp(pendingEmail, code, type);
+      if (result?.error) {
+        setOtpError(result.error.message || "Invalid or expired OTP. Please try again.");
+        setOtp(Array(OTP_LENGTH).fill(""));
+        otpRefs.current[0]?.focus();
+      } else {
+        if (mode === "forgot-password") {
+          // OTP verified for recovery — now show set new password form
+          setRecoveryVerified(true);
+        }
+        // For signup, the store auto-logs in — component will unmount
       }
     } finally {
       setBusy(false);
@@ -105,7 +187,29 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
       } else {
         result = await onResendVerification(pendingEmail);
       }
-      if (!result?.error) startCooldown();
+      if (!result?.error) {
+        startCooldown();
+        setOtp(Array(OTP_LENGTH).fill(""));
+        setOtpError("");
+        otpRefs.current[0]?.focus();
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleSetNewPassword = async () => {
+    if (newPassword.length < 8) {
+      setNewPwdError("Use at least 8 characters.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = await onUpdatePassword(newPassword);
+      if (result?.error) {
+        setNewPwdError(result.error.message || "Failed to update password.");
+      }
+      // On success, the store notifies and handles redirect
     } finally {
       setBusy(false);
     }
@@ -114,11 +218,19 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
   const switchMode = (newMode) => {
     setMode(newMode);
     setErrors({});
+    setPendingEmail(null);
+    setRecoveryVerified(false);
+    setNewPassword("");
+    setNewPwdError("");
+    setOtp(Array(OTP_LENGTH).fill(""));
+    setOtpError("");
     if (newMode === "login" || newMode === "register") {
       setF({ name: "", email: "", password: "", confirmPassword: "" });
     }
     setShowPwd(false);
     setShowConfirmPwd(false);
+    clearInterval(cooldownRef.current);
+    setCooldown(0);
   };
 
   const inputStyle = (hasError) => ({
@@ -143,11 +255,15 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
       to   { opacity: 1; transform: translateY(0); }
     }
     .verify-card { animation: fadeSlideIn 0.35s ease forwards; }
-    @keyframes mailBounce {
-      0%, 100% { transform: translateY(0); }
-      50%       { transform: translateY(-6px); }
+    @keyframes otpPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+      50%       { box-shadow: 0 0 0 4px rgba(255,255,255,0.15); }
     }
-    .verify-icon { animation: mailBounce 2.4s ease-in-out infinite; }
+    .otp-box:focus { 
+      border-color: rgba(255,255,255,0.9); 
+      background: rgba(255,255,255,0.18); 
+      animation: otpPulse 1.5s ease infinite; 
+    }
   `;
 
   const cardStyle = {
@@ -177,7 +293,80 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
     fontFamily: "Inter, sans-serif",
   };
 
-  // ── "Check your inbox" verification screen ───────────────────────────────
+  // ── Recovery: Set New Password screen (after OTP verified) ─────────────────
+  if (recoveryVerified) {
+    return (
+      <div style={bgStyle}>
+        <style>{css}</style>
+        <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)" }} />
+
+        <div style={cardStyle} className="verify-card">
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
+            <div style={{
+              width: 76, height: 76, borderRadius: "50%",
+              background: "rgba(126, 203, 95, 0.2)",
+              border: "2px solid rgba(126,203,95,0.5)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 0 0 8px rgba(126,203,95,0.08)",
+            }}>
+              <Lock size={34} color="#7ecb5f" />
+            </div>
+          </div>
+
+          <h2 style={{ textAlign: "center", fontSize: 24, fontWeight: 700, marginBottom: 10 }}>
+            Set New Password
+          </h2>
+
+          <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.7)", lineHeight: 1.6, marginBottom: 24 }}>
+            OTP verified! Enter your new password below.
+          </p>
+
+          <div style={{ position: "relative", marginBottom: 20 }}>
+            <input
+              className="glass-input"
+              style={inputStyle(!!newPwdError)}
+              type={showNewPwd ? "text" : "password"}
+              placeholder="New Password (min 8 characters)"
+              value={newPassword}
+              onChange={(e) => { setNewPassword(e.target.value); setNewPwdError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && handleSetNewPassword()}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPwd((v) => !v)}
+              style={{
+                position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)",
+                background: "none", border: "none", cursor: "pointer", padding: 0,
+                color: "rgba(255,255,255,0.8)", display: "flex", alignItems: "center",
+              }}
+              tabIndex={-1}
+            >
+              {showNewPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
+          {newPwdError && <div style={{ color: "#ff6b6b", fontSize: 13, marginTop: "-12px", marginBottom: 16, paddingLeft: 4 }}>{newPwdError}</div>}
+
+          <button
+            onClick={handleSetNewPassword}
+            disabled={busy}
+            style={{
+              width: "100%", background: "#fff", color: "#1a1a1a", border: "none",
+              borderRadius: "24px", padding: "14px", fontSize: "16px", fontWeight: 600,
+              cursor: busy ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              transition: "transform 0.1s, opacity 0.2s", opacity: busy ? 0.8 : 1,
+            }}
+          >
+            {busy ? <Loader size={18} style={{ animation: "ecSpin 1s linear infinite" }} /> : "Update Password"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── OTP verification screen ────────────────────────────────────────────────
   if (pendingEmail) {
     return (
       <div style={bgStyle}>
@@ -185,48 +374,102 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)" }} />
 
         <div style={cardStyle} className="verify-card">
-          {/* Animated mail icon */}
+          {/* Shield icon */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
-            <div className="verify-icon" style={{
+            <div style={{
               width: 76, height: 76, borderRadius: "50%",
               background: "rgba(255,255,255,0.15)",
               border: "2px solid rgba(255,255,255,0.35)",
               display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: "0 0 0 8px rgba(255,255,255,0.06)",
             }}>
-              <Mail size={34} color="#fff" />
+              <ShieldCheck size={34} color="#fff" />
             </div>
           </div>
 
           <h2 style={{ textAlign: "center", fontSize: 26, fontWeight: 700, marginBottom: 10 }}>
-            Check your inbox
+            Enter OTP
           </h2>
 
           <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.75)", lineHeight: 1.65, marginBottom: 6 }}>
-            We sent a {mode === "forgot-password" ? "password reset" : "verification"} link to:
+            We sent a 6-digit verification code to:
           </p>
 
           {/* Email display pill */}
           <div style={{
             textAlign: "center", fontSize: 14, fontWeight: 600,
             background: "rgba(255,255,255,0.14)", borderRadius: 12,
-            padding: "10px 18px", marginBottom: 18, wordBreak: "break-all",
+            padding: "10px 18px", marginBottom: 24, wordBreak: "break-all",
             border: "1px solid rgba(255,255,255,0.22)",
           }}>
             {pendingEmail}
           </div>
 
-          <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 28, lineHeight: 1.6 }}>
-            Click the link in the email to {mode === "forgot-password" ? "reset your password" : "activate your account"}.{" "}
-            <strong style={{ color: "rgba(255,255,255,0.85)" }}>
-              It expires in 15 minutes.
-            </strong>
-            <br />Also check your spam / junk folder.
+          {/* OTP input boxes */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 8 }}>
+            {otp.map((digit, i) => (
+              <input
+                key={i}
+                ref={(el) => (otpRefs.current[i] = el)}
+                className="otp-box"
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={digit}
+                onChange={(e) => handleOtpChange(i, e.target.value)}
+                onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                onPaste={i === 0 ? handleOtpPaste : undefined}
+                disabled={busy}
+                style={{
+                  width: 48, height: 56,
+                  textAlign: "center",
+                  fontSize: 22, fontWeight: 700,
+                  background: digit ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.08)",
+                  border: `2px solid ${otpError ? "#ff6b6b" : digit ? "rgba(255,255,255,0.5)" : "rgba(255,255,255,0.2)"}`,
+                  borderRadius: 12,
+                  color: "#fff",
+                  outline: "none",
+                  transition: "all 0.2s ease",
+                  caretColor: "#fff",
+                }}
+              />
+            ))}
+          </div>
+
+          {/* OTP error */}
+          {otpError && (
+            <div style={{ color: "#ff6b6b", fontSize: 13, textAlign: "center", marginBottom: 12, padding: "0 4px" }}>
+              {otpError}
+            </div>
+          )}
+
+          <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.5)", marginBottom: 24, marginTop: 8 }}>
+            Check your inbox and spam folder. The code expires in 15 minutes.
           </p>
 
-          {/* Resend button with live countdown */}
+          {/* Verify OTP button */}
           <button
-            id="resend-verification-btn"
+            id="verify-otp-btn"
+            onClick={handleVerifyOtp}
+            disabled={busy}
+            style={{
+              width: "100%", background: "#fff", color: "#1a1a1a", border: "none",
+              borderRadius: "24px", padding: "14px", fontSize: "16px", fontWeight: 600,
+              cursor: busy ? "not-allowed" : "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              transition: "transform 0.1s, opacity 0.2s", opacity: busy ? 0.8 : 1,
+              marginBottom: 14,
+            }}
+            onMouseDown={e => { if (!busy) e.currentTarget.style.transform = "scale(0.98)"; }}
+            onMouseUp={e => { if (!busy) e.currentTarget.style.transform = "scale(1)"; }}
+            onMouseLeave={e => { if (!busy) e.currentTarget.style.transform = "scale(1)"; }}
+          >
+            {busy ? <Loader size={18} style={{ animation: "ecSpin 1s linear infinite" }} /> : <><ShieldCheck size={18} /> Verify OTP</>}
+          </button>
+
+          {/* Resend OTP with live countdown */}
+          <button
+            id="resend-otp-btn"
             onClick={handleResend}
             disabled={cooldown > 0 || busy}
             style={{
@@ -252,7 +495,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
             ) : (
               <>
                 <RefreshCw size={15} style={{ opacity: cooldown > 0 ? 0.45 : 1 }} />
-                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend Email"}
+                {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
               </>
             )}
           </button>
@@ -269,6 +512,8 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
             id="change-email-btn"
             onClick={() => {
               setPendingEmail(null);
+              setOtp(Array(OTP_LENGTH).fill(""));
+              setOtpError("");
               setMode(mode === "forgot-password" ? "forgot-password" : "register");
               setF(p => ({ ...p, password: "" }));
               clearInterval(cooldownRef.current);
@@ -292,7 +537,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
             Use a different email
           </button>
 
-          {/* Already verified? */}
+          {/* Back to login */}
           <p style={{ textAlign: "center", fontSize: 13, color: "rgba(255,255,255,0.55)", margin: 0 }}>
             {mode === "forgot-password" ? "Remembered your password? " : "Already verified? "}
             <span
@@ -300,7 +545,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
               onClick={() => {
                 setPendingEmail(null);
                 setMode("login");
-                setF({ name: "", email: pendingEmail, password: "" });
+                setF({ name: "", email: pendingEmail, password: "", confirmPassword: "" });
                 clearInterval(cooldownRef.current);
                 setCooldown(0);
               }}
@@ -313,7 +558,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
     );
   }
 
-  // ── Login / Register form ─────────────────────────────────────────────────
+  // ── Login / Register / Forgot Password form ────────────────────────────────
   return (
     <div style={bgStyle}>
       <style>{css}</style>
@@ -326,7 +571,7 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
 
         {mode === "forgot-password" && (
           <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.75)", marginBottom: 24, lineHeight: 1.5 }}>
-            Enter your email address and we'll send you a link to reset your password.
+            Enter your email address and we'll send you an OTP to reset your password.
           </p>
         )}
 
@@ -482,13 +727,15 @@ export default function AuthForm({ onLogin, onRegister, onResendVerification, on
             const res = await onForgotPassword(f.email);
             setBusy(false);
             if (!res?.error) {
-              setPendingEmail(f.email);
+              setPendingEmail(f.email.trim());
+              setOtp(Array(OTP_LENGTH).fill(""));
+              setOtpError("");
               startCooldown();
             }
           } : submit}
           disabled={busy}
         >
-          {busy ? <Loader size={18} style={{ animation: "ecSpin 1s linear infinite" }} /> : (mode === "login" ? "Login" : mode === "register" ? "Register" : "Send Reset Link")}
+          {busy ? <Loader size={18} style={{ animation: "ecSpin 1s linear infinite" }} /> : (mode === "login" ? "Login" : mode === "register" ? "Register" : "Send OTP")}
         </button>
 
         <p style={{ textAlign: "center", fontSize: 14, color: "rgba(255,255,255,0.7)", marginTop: 24 }}>

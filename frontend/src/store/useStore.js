@@ -612,15 +612,35 @@ export default function useStore() {
   };
 
   const sendPasswordResetEmail = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/#type=recovery`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
     if (error) {
-      notify(error.message || "Failed to send reset link", "warn");
+      notify(error.message || "Failed to send OTP", "warn");
       return { error };
     }
-    notify("Password reset link sent! Check your email.");
+    notify("OTP sent! Check your email.");
     return { error: null };
+  };
+
+  const verifyOtp = async (email, token, type) => {
+    // type: "signup" | "recovery"
+    const { data, error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token,
+      type,
+    });
+
+    if (error) {
+      return { error: { message: error.message || "Invalid or expired OTP" } };
+    }
+
+    if (type === "signup") {
+      // User is now verified and logged in
+      const profile = await fetchProfile(data.user);
+      setCurrentUser(profile);
+      notify("Email verified! You are logged in.");
+    }
+    // For "recovery", the session is established — caller will show new password form
+    return { error: null, data };
   };
 
   const updatePassword = async (newPassword) => {
@@ -921,7 +941,7 @@ export default function useStore() {
     login, register, logout, resendVerification, placeOrder, placeOrderOnline,
     saveProduct, toggleProduct, setOrderStatus, toggleDark,
     uploadProductImage, deleteProductImage,
-    loadProducts, loadCart, loadOrders, loadUsers, sendPasswordResetEmail, updatePassword,
+    loadProducts, loadCart, loadOrders, loadUsers, sendPasswordResetEmail, verifyOtp, updatePassword,
     updateProfile, loadAddresses, saveAddress, deleteAddress, setDefaultAddress,
     loadWishlist, toggleWishlist, loadReviews, checkHasPurchased, submitReview,
   };
