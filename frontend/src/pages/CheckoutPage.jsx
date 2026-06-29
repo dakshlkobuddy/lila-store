@@ -5,7 +5,7 @@ import Empty from "../components/Empty.jsx";
 import { s } from "./CheckoutPage.styles.js";
 
 export default function CheckoutPage({ store }) {
-  const { cartDetailed, cartTotal, currentUser, placeOrder, placeOrderOnline } = store;
+  const { cartDetailed, cartTotal, currentUser, placeOrder, placeOrderOnline, addresses } = store;
 
   // Separate busy states so each button shows its own spinner independently
   const [busyCOD, setBusyCOD]       = useState(false);
@@ -74,6 +74,7 @@ export default function CheckoutPage({ store }) {
             onPlaceOnline={handlePlaceOnline}
             busyCOD={busyCOD}
             busyOnline={busyOnline}
+            savedAddresses={addresses}
           />
         </>
       )}

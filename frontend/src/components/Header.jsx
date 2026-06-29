@@ -11,6 +11,7 @@ export default function Header({ store }) {
     <>
       <span className="ec-link" style={navItem(route.name === "home")} onClick={() => go("home")}>Shop</span>
       {currentUser && <span className="ec-link" style={navItem(route.name === "orders")} onClick={() => go("orders")}>My Orders</span>}
+      {currentUser && !isAdmin && <span className="ec-link" style={navItem(route.name === "profile")} onClick={() => go("profile")}><User size={15} /> My Account</span>}
       {isAdmin && <span className="ec-link" style={navItem(route.name === "admin")} onClick={() => go("admin")}><LayoutDashboard size={15} /> Dashboard</span>}
       {currentUser
         ? <span className="ec-link" style={navItem(false)} onClick={logout}><LogOut size={15} /> Sign out</span>

@@ -17,6 +17,7 @@ import CheckoutPage from "./pages/CheckoutPage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
 import ConfirmationPage from "./pages/ConfirmationPage.jsx";
 import AdminPage from "./pages/AdminPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 
 // Picks which page to render based on the current route.
 function CurrentPage({ store }) {
@@ -27,6 +28,7 @@ function CurrentPage({ store }) {
     case "orders": return <OrdersPage store={store} />;
     case "confirmation": return <ConfirmationPage store={store} />;
     case "admin": return <AdminPage store={store} />;
+    case "profile": return <ProfilePage store={store} />;
     case "home":
     default: return <HomePage store={store} />;
   }

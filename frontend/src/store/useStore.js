@@ -10,6 +10,7 @@ export default function useStore() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [cart, setCart] = useState([]);
+  const [addresses, setAddresses] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [route, setRoute] = useState({ name: "home" });
@@ -54,14 +55,11 @@ export default function useStore() {
   useEffect(() => {
     let cancelled = false;
 
-    // 1. Get existing session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // 1. Clear session on mount to enforce login on reload
+    supabase.auth.signOut().then(() => {
       if (cancelled) return;
-      if (session?.user) {
-        const profile = await fetchProfile(session.user.id);
-        if (!cancelled) setCurrentUser(profile);
-      }
-      if (!cancelled) setLoading(false);
+      setCurrentUser(null);
+      setLoading(false);
     });
 
     // 2. Listen for auth changes
@@ -69,7 +67,7 @@ export default function useStore() {
       async (_event, session) => {
         if (cancelled) return;
         if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
+          const profile = await fetchProfile(session.user);
           if (!cancelled) {
             setCurrentUser(profile);
             // Auto-redirect admin to dashboard on sign-in
@@ -89,22 +87,22 @@ export default function useStore() {
     };
   }, []);
 
-  const fetchProfile = async (userId) => {
+  const fetchProfile = async (user) => {
     // Call ensure_profile() RPC which auto-creates the profile if missing
     // (handles users created before the trigger, or schema resets).
     const { data: rpcData, error: rpcError } = await supabase.rpc("ensure_profile");
 
     if (!rpcError && rpcData) {
-      return rpcData;
+      return { ...rpcData, email: user.email };
     }
 
     // Fallback: direct query (in case the RPC hasn't been deployed yet)
     const { data } = await supabase
       .from("profiles")
       .select("*")
-      .eq("id", userId)
+      .eq("id", user.id)
       .single();
-    return data;
+    return { ...data, email: user.email };
   };
 
   // ── Load data when user changes ───────────────────────────
@@ -116,9 +114,11 @@ export default function useStore() {
     if (currentUser) {
       loadCart();
       loadOrders();
+      loadAddresses();
     } else {
       setCart([]);
       setOrders([]);
+      setAddresses([]);
     }
   }, [currentUser]);
 
@@ -402,8 +402,137 @@ export default function useStore() {
     setCurrentUser(null);
     setCart([]);
     setOrders([]);
+    setAddresses([]);
     go("home");
     notify("Signed out");
+  };
+
+  // ── Profile management ────────────────────────────────────
+  const updateProfile = async (fields) => {
+    if (!currentUser) return;
+    const updates = {};
+    if (fields.name !== undefined) updates.name = fields.name.trim();
+    if (fields.phone !== undefined) updates.phone = fields.phone.trim() || null;
+
+    let emailMsg = "";
+    if (fields.email !== undefined && fields.email.trim() !== currentUser.email) {
+       const { error: emailError } = await supabase.auth.updateUser({ email: fields.email.trim() });
+       if (emailError) {
+         notify(emailError.message || "Failed to update email", "warn");
+         return { error: emailError };
+       }
+       emailMsg = " (Check your inbox to verify new email)";
+    }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updates)
+      .eq("id", currentUser.id);
+
+    if (error) {
+      notify(error.message || "Failed to update profile", "warn");
+      return { error };
+    }
+
+    setCurrentUser((prev) => ({ ...prev, ...updates, email: fields.email ? fields.email.trim() : prev.email }));
+    notify("Profile updated!" + emailMsg);
+    return { error: null };
+  };
+
+  // ── Addresses ─────────────────────────────────────────────
+  const loadAddresses = async () => {
+    if (!currentUser) return;
+    const { data, error } = await supabase
+      .from("addresses")
+      .select("*")
+      .eq("user_id", currentUser.id)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (!error && data) setAddresses(data);
+  };
+
+  const saveAddress = async (addr) => {
+    if (!currentUser) return;
+
+    // If this is being set as default, unset all others first
+    if (addr.is_default) {
+      await supabase
+        .from("addresses")
+        .update({ is_default: false })
+        .eq("user_id", currentUser.id);
+    }
+
+    if (addr.id) {
+      // Update existing
+      const { error } = await supabase
+        .from("addresses")
+        .update({
+          label: addr.label,
+          name: addr.name,
+          phone: addr.phone,
+          address: addr.address,
+          city: addr.city,
+          state: addr.state,
+          pincode: addr.pincode,
+          is_default: addr.is_default || false,
+        })
+        .eq("id", addr.id);
+
+      if (error) { notify(error.message || "Failed to update address", "warn"); return { error }; }
+      notify("Address updated!");
+    } else {
+      // Insert new — if it's the first address, auto-set as default
+      const isFirst = addresses.length === 0;
+      const { error } = await supabase
+        .from("addresses")
+        .insert({
+          user_id: currentUser.id,
+          label: addr.label || "Home",
+          name: addr.name,
+          phone: addr.phone,
+          address: addr.address,
+          city: addr.city,
+          state: addr.state,
+          pincode: addr.pincode,
+          is_default: addr.is_default || isFirst,
+        });
+
+      if (error) { notify(error.message || "Failed to save address", "warn"); return { error }; }
+      notify("Address saved!");
+    }
+
+    await loadAddresses();
+    return { error: null };
+  };
+
+  const deleteAddress = async (id) => {
+    const { error } = await supabase
+      .from("addresses")
+      .delete()
+      .eq("id", id);
+
+    if (error) { notify("Failed to delete address", "warn"); return; }
+    notify("Address deleted");
+    await loadAddresses();
+  };
+
+  const setDefaultAddress = async (id) => {
+    if (!currentUser) return;
+    // Unset all
+    await supabase
+      .from("addresses")
+      .update({ is_default: false })
+      .eq("user_id", currentUser.id);
+    // Set the one
+    const { error } = await supabase
+      .from("addresses")
+      .update({ is_default: true })
+      .eq("id", id);
+
+    if (error) { notify("Failed to set default", "warn"); return; }
+    notify("Default address updated");
+    await loadAddresses();
   };
 
   const sendPasswordResetEmail = async (email) => {
@@ -694,7 +823,7 @@ export default function useStore() {
     // state
     products, orders, cart, currentUser, loading, route, toast,
     query, cat, menuOpen, adminTab, editingProduct, showForm, lastOrder,
-    sort, inStockOnly, maxPrice, showFilters, isDark, showPasswordReset,
+    sort, inStockOnly, maxPrice, showFilters, isDark, showPasswordReset, addresses,
     // setters
     setQuery, setCat, setMenuOpen, setAdminTab, setEditingProduct, setShowForm,
     setSort, setInStockOnly, setMaxPrice, setShowFilters, setShowPasswordReset,
@@ -707,5 +836,6 @@ export default function useStore() {
     saveProduct, toggleProduct, setOrderStatus, toggleDark,
     uploadProductImage, deleteProductImage,
     loadProducts, loadCart, loadOrders, sendPasswordResetEmail, updatePassword,
+    updateProfile, loadAddresses, saveAddress, deleteAddress, setDefaultAddress,
   };
 }

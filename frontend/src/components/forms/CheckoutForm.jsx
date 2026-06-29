@@ -52,14 +52,56 @@ const STATE_CITIES = {
 // Shipping details form with validation.
 // Exposes two payment buttons — Razorpay (online) and COD — so both go through
 // the same address validation before the parent triggers the correct flow.
-export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, busyCOD, busyOnline }) {
+export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, busyCOD, busyOnline, savedAddresses = [] }) {
   const [f, setF] = useState({ name: user?.name || "", phone: "", address: "", city: "", cityCustom: "", state: "", pincode: "" });
   const [errors, setErrors] = useState({});
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
+
+  // Auto-fill from default saved address on mount
+  useState(() => {
+    const defaultAddr = savedAddresses.find(a => a.is_default);
+    if (defaultAddr) {
+      fillFromAddress(defaultAddr);
+      setSelectedAddressId(defaultAddr.id);
+    }
+  });
+
+  function fillFromAddress(addr) {
+    // Check if the city is in the dropdown for that state
+    const cities = STATE_CITIES[addr.state] || [];
+    const cityInList = cities.includes(addr.city);
+    setF({
+      name: addr.name || user?.name || "",
+      phone: addr.phone || "",
+      address: addr.address || "",
+      state: addr.state || "",
+      city: cityInList ? addr.city : (addr.city ? "Other" : ""),
+      cityCustom: cityInList ? "" : (addr.city || ""),
+      pincode: addr.pincode || "",
+    });
+    setErrors({});
+  }
+
+  const handleAddressSelect = (addrId) => {
+    if (addrId === "manual") {
+      setSelectedAddressId(null);
+      setF({ name: user?.name || "", phone: "", address: "", city: "", cityCustom: "", state: "", pincode: "" });
+      setErrors({});
+      return;
+    }
+    const addr = savedAddresses.find(a => a.id === addrId);
+    if (addr) {
+      setSelectedAddressId(addrId);
+      fillFromAddress(addr);
+    }
+  };
   
   const set = (k, v) => {
     setF((p) => ({ ...p, [k]: v }));
     // Clear error immediately when user starts typing again
     setErrors((e) => ({ ...e, [k]: "" }));
+    // If user manually edits a field, unlink from saved address
+    if (selectedAddressId) setSelectedAddressId(null);
   };
 
   // Block non-numeric key presses for number-only fields
@@ -125,6 +167,7 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
   const handleStateChange = (st) => {
     setF((p) => ({ ...p, state: st, city: "", cityCustom: "" }));
     setErrors((e) => ({ ...e, state: "", city: "", cityCustom: "" }));
+    if (selectedAddressId) setSelectedAddressId(null);
   };
 
   const validate = () => {
@@ -175,6 +218,34 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
     <div className="ec-card" style={{ padding: 24 }}>
       <h3 className="ec-disp" style={{ fontSize: 20, marginBottom: 16 }}>Shipping details</h3>
 
+      {/* Saved address picker */}
+      {savedAddresses.length > 0 && (
+        <div style={{ marginBottom: 18, paddingBottom: 18, borderBottom: "1px solid var(--line)" }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 700, letterSpacing: ".04em", textTransform: "uppercase", color: "var(--ink-soft)", marginBottom: 8 }}>
+            Use saved address
+          </label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {savedAddresses.map((addr) => (
+              <button
+                key={addr.id}
+                className={`ec-chip ${selectedAddressId === addr.id ? "ec-chip-on" : ""}`}
+                onClick={() => handleAddressSelect(addr.id)}
+                style={{ fontSize: 13 }}
+              >
+                {addr.label}{addr.is_default ? " ★" : ""}
+              </button>
+            ))}
+            <button
+              className={`ec-chip ${selectedAddressId === null ? "ec-chip-on" : ""}`}
+              onClick={() => handleAddressSelect("manual")}
+              style={{ fontSize: 13 }}
+            >
+              Enter manually
+            </button>
+          </div>
+        </div>
+      )}
+
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "var(--ink-soft)", marginBottom: 6 }}>
         Full name <span style={{ color: "var(--accent)" }}>*</span>
       </label>
@@ -189,7 +260,7 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
         inputMode="numeric"
         maxLength={10}
         style={{ marginBottom: errors.phone ? 0 : 12, ...errBorder(errors.phone) }}
-        placeholder="10-digit mobile number"
+        placeholder="Enter 10 digit phone number"
         value={f.phone}
         onChange={(e) => set("phone", e.target.value)}
         onKeyDown={onlyNumbers}
@@ -226,7 +297,7 @@ export default function CheckoutForm({ user, total, onPlaceCOD, onPlaceOnline, b
             disabled={!f.state}
           >
             <option value="" disabled>
-              {f.state ? "— City —" : "Select State first"}
+              — City —
             </option>
             {f.state && STATE_CITIES[f.state]?.map((ct) => (
               <option key={ct} value={ct}>{ct}</option>
