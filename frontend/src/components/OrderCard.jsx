@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { STATUS_COLOR, STATUS_FLOW } from "../constants.js";
 import { money } from "../lib/format.js";
-import { CheckCircle2, Circle, Clock, FileText } from "lucide-react";
+import { CheckCircle2, Circle, Clock, FileText, XCircle, Loader } from "lucide-react";
 import { generateInvoice } from "../lib/pdf.js";
 
 // One order row in the customer's "My orders" list.
-export default function OrderCard({ o }) {
+export default function OrderCard({ o, onCancel }) {
+  const [cancelling, setCancelling] = useState(false);
   const activeIdx = STATUS_FLOW.indexOf(o.status);
   const isCancelled = o.status === "Cancelled";
   const items = o.order_items || [];
@@ -72,17 +74,34 @@ export default function OrderCard({ o }) {
       )}
 
       {/* Footer */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--line)", paddingTop: 14, marginTop: 14, flexWrap: "wrap", gap: 10 }}>
         <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>
           Total <span className="ec-disp" style={{ color: "var(--ink)", fontSize: 18, marginLeft: 6 }}>{money(o.total)}</span>
         </div>
-        <button 
-          className="ec-btn ec-btn-ghost" 
-          style={{ padding: "6px 12px", fontSize: 13, color: "var(--accent)", border: "1px solid var(--line)", background: "var(--surface)" }}
-          onClick={() => generateInvoice(o)}
-        >
-          <FileText size={14} /> Download Invoice
-        </button>
+        <div style={{ display: "flex", gap: 10 }}>
+          {o.status === "Placed" && onCancel && (
+            <button 
+              className="ec-btn ec-btn-ghost" 
+              style={{ padding: "6px 12px", fontSize: 13, color: "var(--danger)", border: "1px solid var(--danger)", background: "transparent" }}
+              disabled={cancelling}
+              onClick={async () => {
+                if (!window.confirm("Are you sure you want to cancel this order?")) return;
+                setCancelling(true);
+                await onCancel();
+                setCancelling(false);
+              }}
+            >
+              {cancelling ? <Loader size={14} style={{ animation: "ecSpin 1s linear infinite" }} /> : <XCircle size={14} />} Cancel Order
+            </button>
+          )}
+          <button 
+            className="ec-btn ec-btn-ghost" 
+            style={{ padding: "6px 12px", fontSize: 13, color: "var(--accent)", border: "1px solid var(--line)", background: "var(--surface)" }}
+            onClick={() => generateInvoice(o)}
+          >
+            <FileText size={14} /> Download Invoice
+          </button>
+        </div>
       </div>
     </div>
   );

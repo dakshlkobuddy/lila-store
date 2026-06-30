@@ -28,19 +28,18 @@ export const SIZE_PRESETS = [
 
 // ── DO NOT EDIT BELOW unless you add/remove order statuses ──
 
-// Order status pipeline (must match PostgreSQL ENUM order_status exactly).
+// Order status pipeline (must match PostgreSQL ENUM order_status exactly after migration 008).
 export const STATUS_FLOW = [
-  "Pending", "Confirmed", "Processing", "Shipped", "Delivered", "Cancelled",
+  "Placed", "Shipped", "Out for Delivery", "Delivered", "Cancelled",
 ];
 
 // Colour per order status (used in admin order cards & timeline).
 export const STATUS_COLOR = {
-  Pending:    "#C8923E",
-  Confirmed:  "#5C6B79",
-  Processing: "#6A5ACD",
-  Shipped:    "#7A4A63",
-  Delivered:  "#5E7B5A",
-  Cancelled:  "#B23A2E",
+  "Placed":           "#C8923E",
+  "Shipped":          "#6A5ACD",
+  "Out for Delivery": "#E58E26",
+  "Delivered":        "#5E7B5A",
+  "Cancelled":        "#B23A2E",
 };
 
 // Icon + gradient per category (used for placeholder illustrations & image fallbacks).

@@ -1,5 +1,5 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 import { money } from "./format.js";
 import { BRAND } from "../constants.js";
 
@@ -71,7 +71,7 @@ export function generateInvoice(order) {
     ];
   });
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: 230,
     head: [["#", "Item Description", "Unit Price", "Qty", "Total"]],
     body: tableData,

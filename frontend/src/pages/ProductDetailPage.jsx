@@ -206,6 +206,31 @@ export default function ProductDetailPage({ store }) {
   );
 }
 
+// Map of common colour names to hex values for swatch rendering
+const COLOUR_HEX = {
+  black: "#1a1a1a", white: "#fff", red: "#e53e3e", blue: "#3182ce", navy: "#1a365d",
+  green: "#38a169", pink: "#ed64a6", purple: "#805ad5", yellow: "#ecc94b", orange: "#ed8936",
+  grey: "#a0aec0", gray: "#a0aec0", brown: "#8b6914", beige: "#f5f0e1", cream: "#fdf6e3",
+  maroon: "#800000", teal: "#319795", coral: "#ff7f7f", peach: "#ffdab9", lavender: "#b794f4",
+  mint: "#b2f5ea", nude: "#e8c4a0", skin: "#f5d5b5", wine: "#722f37", rust: "#b7410e",
+  olive: "#6b8e23", gold: "#d4a017", silver: "#c0c0c0", "rose gold": "#b76e79",
+  "hot pink": "#ff69b4", magenta: "#ff00ff", turquoise: "#40e0d0", cyan: "#00bcd4",
+  "sky blue": "#87ceeb", "light blue": "#add8e6", "dark blue": "#00008b", "royal blue": "#4169e1",
+  "light pink": "#ffb6c1", "dark green": "#006400", "light green": "#90ee90",
+  multicolor: null, multi: null, printed: null, assorted: null,
+};
+
+function getColourHex(name) {
+  if (!name) return null;
+  const key = name.toLowerCase().trim();
+  if (key in COLOUR_HEX) return COLOUR_HEX[key];
+  // Try partial match
+  for (const [k, v] of Object.entries(COLOUR_HEX)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null; // Unknown colour — fallback to pill
+}
+
 function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist }) {
   const p = product;
   const sizes = p.sizes || [];
@@ -214,6 +239,10 @@ function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist 
   const [colour, setColour] = useState("");
   const [qty, setQty] = useState(1);
   const [zoomed, setZoomed] = useState(false);
+
+  // Hover-to-zoom state
+  const [isHovering, setIsHovering] = useState(false);
+  const [mousePos, setMousePos] = useState({ x: 50, y: 50 }); // percentage
 
   const ready = p.stock > 0 && (sizes.length === 0 || size) && (colours.length === 0 || colour);
   const maxQty = p.stock;
@@ -230,9 +259,16 @@ function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist 
       ? "Select options"
       : "Add to cart";
 
+  const handleMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setMousePos({ x, y });
+  };
+
   return (
     <div>
-      {/* Image zoom overlay */}
+      {/* Image zoom overlay (click fullscreen) */}
       {zoomed && (
         <div
           onClick={() => setZoomed(false)}
@@ -259,22 +295,60 @@ function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist 
 
       <button className="ec-btn ec-btn-ghost" style={s.backBtn} onClick={onBack}><ArrowLeft size={16} /> Back</button>
       <div style={s.grid} className="ec-detail">
-        {/* Image with zoom button */}
+        {/* Image with hover-to-zoom magnifier */}
         <div style={{ position: "relative" }}>
-          <ProductImage product={p} className="ec-card" style={{ ...s.image, cursor: "zoom-in" }} onClick={() => setZoomed(true)} />
-          <button
-            onClick={() => setZoomed(true)}
-            title="Zoom image"
+          <div
             style={{
-              position: "absolute", bottom: 12, right: 12,
-              background: "rgba(255,255,255,0.88)", border: "1px solid var(--line)",
-              borderRadius: 8, padding: "6px 10px", cursor: "pointer",
-              display: "flex", alignItems: "center", gap: 5,
-              fontSize: 12, fontWeight: 600, color: "var(--ink-soft)",
+              position: "relative",
+              overflow: "hidden",
+              borderRadius: 18,
+              cursor: "crosshair",
             }}
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+            onMouseMove={handleMouseMove}
+            onClick={() => setZoomed(true)}
           >
-            <ZoomIn size={14} /> Zoom
-          </button>
+            <ProductImage
+              product={p}
+              className="ec-card"
+              style={{
+                ...s.image,
+                transition: "transform 0.15s ease",
+                transform: isHovering ? "scale(1.5)" : "scale(1)",
+                transformOrigin: `${mousePos.x}% ${mousePos.y}%`,
+              }}
+            />
+            {/* Zoom lens indicator */}
+            {isHovering && (
+              <div style={{
+                position: "absolute", top: 12, left: 12,
+                background: "rgba(0,0,0,0.6)", color: "#fff",
+                borderRadius: 6, padding: "4px 10px",
+                fontSize: 11, fontWeight: 600,
+                display: "flex", alignItems: "center", gap: 4,
+                pointerEvents: "none",
+              }}>
+                <ZoomIn size={12} /> Hover to zoom · Click to expand
+              </div>
+            )}
+          </div>
+          {/* Zoom button (shown when NOT hovering) */}
+          {!isHovering && (
+            <button
+              onClick={() => setZoomed(true)}
+              title="Zoom image"
+              style={{
+                position: "absolute", bottom: 12, right: 12,
+                background: "rgba(255,255,255,0.88)", border: "1px solid var(--line)",
+                borderRadius: 8, padding: "6px 10px", cursor: "pointer",
+                display: "flex", alignItems: "center", gap: 5,
+                fontSize: 12, fontWeight: 600, color: "var(--ink-soft)",
+              }}
+            >
+              <ZoomIn size={14} /> Zoom
+            </button>
+          )}
         </div>
 
         <div>
@@ -296,7 +370,7 @@ function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist 
           </div>
 
           <div className="ec-disp ec-detail-price" style={{ ...s.price, marginTop: 8 }}>{money(p.price)}</div>
-          <div style={s.stockWrap}><StockBadge stock={p.stock} /></div>
+          <div style={s.stockWrap}><StockBadge stock={p.stock} showUrgency /></div>
           
           <p style={s.desc}>{p.description}</p>
 
@@ -311,8 +385,44 @@ function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist 
           {colours.length > 0 && (
             <div style={s.optGroupLast}>
               <div style={s.optLabel}>Colour{colour ? `: ${colour}` : ""}</div>
-              <div style={s.optRow}>
-                {colours.map((x) => <Pill key={x} label={x} active={colour === x} onClick={() => setColour(colour === x ? "" : x)} />)}
+              <div style={{ ...s.optRow, gap: 10 }}>
+                {colours.map((x) => {
+                  const hex = getColourHex(x);
+                  const isActive = colour === x;
+                  // If we have a hex, show a swatch circle; otherwise fall back to Pill
+                  if (hex) {
+                    const isLight = hex === "#fff" || hex === "#fdf6e3" || hex === "#f5f0e1" || hex === "#f5d5b5" || hex === "#ffdab9" || hex === "#e8c4a0" || hex === "#ecc94b" || hex === "#c0c0c0";
+                    return (
+                      <div
+                        key={x}
+                        onClick={() => setColour(colour === x ? "" : x)}
+                        className="ec-link"
+                        title={x}
+                        style={{
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 5, cursor: "pointer",
+                        }}
+                      >
+                        <div style={{
+                          width: 36, height: 36, borderRadius: "50%",
+                          background: hex,
+                          border: isActive ? "3px solid var(--accent)" : isLight ? "2px solid var(--line)" : "2px solid transparent",
+                          boxShadow: isActive ? "0 0 0 2px var(--accent)" : "0 1px 4px rgba(0,0,0,0.15)",
+                          transition: "all 0.2s ease",
+                          transform: isActive ? "scale(1.1)" : "scale(1)",
+                        }} />
+                        <span style={{
+                          fontSize: 11, fontWeight: isActive ? 700 : 500,
+                          color: isActive ? "var(--accent)" : "var(--ink-soft)",
+                          textTransform: "capitalize",
+                        }}>
+                          {x}
+                        </span>
+                      </div>
+                    );
+                  }
+                  // Fallback: Multicolor / printed / unknown → use text Pill
+                  return <Pill key={x} label={x} active={isActive} onClick={() => setColour(colour === x ? "" : x)} />;
+                })}
               </div>
             </div>
           )}
@@ -352,3 +462,4 @@ function ProductDetail({ product, onAdd, onBack, isWishlisted, onToggleWishlist 
     </div>
   );
 }
+

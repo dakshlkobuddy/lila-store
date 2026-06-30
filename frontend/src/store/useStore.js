@@ -702,10 +702,14 @@ export default function useStore() {
     const rnd = Math.random().toString(36).slice(2, 7).toUpperCase();
     const orderId = `ORD-${ts}-${rnd}`;
 
+    // Fetch user email for notifications
+    const { data: authData } = await supabase.auth.getUser();
+    const finalShipping = { ...shipping, email: authData?.user?.email };
+
     const { data, error } = await supabase.rpc("place_order", {
       p_order_id:       orderId,
       p_items:          items,
-      p_shipping:       shipping,
+      p_shipping:       finalShipping,
       p_payment_status: "cod",  // explicit: cash on delivery
     });
 
@@ -825,20 +829,23 @@ export default function useStore() {
       return { error: { message: err.message } };
     }
 
-    // ── Step 5: Verify payment + place order (server-side) ────
-    // Server verifies HMAC-SHA256 signature before creating the order.
+    // ── Step 5: Verify signature on backend & place order ─────
     let verifyData;
     try {
+      // Fetch user email for notifications
+      const { data: authData } = await supabase.auth.getUser();
+      const finalShipping = { ...shipping, email: authData?.user?.email };
+
       const verifyRes = await fetch(`${fnBase}/verify-and-place-order`, {
         method: "POST",
         headers,
         body: JSON.stringify({
-          razorpay_payment_id: paymentResult.razorpay_payment_id,
+          internal_order_id:   internal_order_id,
           razorpay_order_id:   paymentResult.razorpay_order_id,
+          razorpay_payment_id: paymentResult.razorpay_payment_id,
           razorpay_signature:  paymentResult.razorpay_signature,
-          internal_order_id,
           items,
-          shipping,
+          shipping: finalShipping,
         }),
       });
       verifyData = await verifyRes.json();
@@ -898,6 +905,17 @@ export default function useStore() {
     await loadOrders();
   };
 
+  const cancelOrder = async (orderId) => {
+    const { data, error } = await supabase.rpc("cancel_order", { p_order_id: orderId });
+    if (error || data?.error) {
+      notify(error?.message || data?.error || "Failed to cancel order", "warn");
+      return { error: error || new Error(data?.error) };
+    }
+    notify("Order cancelled successfully");
+    await loadOrders();
+    return { error: null };
+  };
+
   // ── Derived ───────────────────────────────────────────────
   const isAdmin = currentUser?.role === "admin";
   const revenue = orders
@@ -939,7 +957,7 @@ export default function useStore() {
     // actions
     go, notify, addToCart, setQtyAt, removeAt,
     login, register, logout, resendVerification, placeOrder, placeOrderOnline,
-    saveProduct, toggleProduct, setOrderStatus, toggleDark,
+    saveProduct, toggleProduct, setOrderStatus, cancelOrder, toggleDark,
     uploadProductImage, deleteProductImage,
     loadProducts, loadCart, loadOrders, loadUsers, sendPasswordResetEmail, verifyOtp, updatePassword,
     updateProfile, loadAddresses, saveAddress, deleteAddress, setDefaultAddress,

@@ -206,6 +206,42 @@ All migrations are idempotent — safe to re-run.
 
 ---
 
+## What We Added / Modified
+
+- **Email Validation & OTP Auth**  
+  Registration ab password-less OTP flow se hoti hai (ya password based with OTP verification), bypassing Supabase's email link. "Forgot Password" bhi seedha OTP based kar diya hai. User experience bohot smooth hai.
+- **Product Features (Size, Colors, Zoom, Urgency)**  
+  Hover-to-zoom feature on product images, dynamic color swatches for selection, aur "Only X left in stock!" wala animated urgency badge.
+- **Customer Reviews & Wishlist**  
+  Users ab items ko "Save for later" (wishlist) kar sakte hain aur purchases complete hone par reviews daal sakte hain.
+- **Address Book Management**  
+  "My Account" page mein user multiple delivery addresses save, edit, aur delete kar sakte hain (Home, Office wagaira) aur checkout pe unhe single click mein select kar sakte hain.
+- **Invoice Generation**  
+  Admin (aur customer) ke paas order complete hone par **Download Invoice** ka button aayega jo on-the-fly ek `PDF` generate karta hai (via `jspdf`).
+- **Enhanced Admin Dashboard**  
+  Naye charts (Revenue, Sales) `recharts` ki madad se, aur "Customers" tab jismein registered users dikhte hain. (Chunk size warnings aati hain Vite mein, par functioning theek hai).
+- **Static Content Pages**  
+  About Us, Privacy Policy, Returns & Exchange jaise essential pages header/footer mein proper nav links ke saath jud gaye hain.
+- **Order Tracking & Notifications**  
+  Customer profile ke "My Orders" tab mein ek visual tracking progress bar add kiya (Placed -> Shipped -> Out for Delivery -> Delivered). Saath mein, edge functions ko update kiya hai taaki in naye states (aur Cancelled) par proper automated emails bheji jayein.
+
+---
+
+## Technical Constraints & Edge Cases
+
+- **Authentication:** `useStore.js` manages local session states. Page refresh pe agar state flush ho jaaye, to user silently log out hota tha — us behaviour ko preserve kiya hai as per requirements. 
+- **Email Limits:** SMTP service configured hai with a 500 emails/day limit. Edge Functions via Resend aur Auth emails usi pipeline se routed hain.
+- **Postgres Enums:** Order statuses ab frontend aur backend (enum `order_status`) mein consistently (Placed, Shipped, Out for Delivery, Delivered, Cancelled) mapped hain.
+
+---
+
+## Future Scope / Pending
+
+- **Payment Gateway Integration:** Razorpay / Stripe ka UI ready hai, keys add karne baaki hain.
+- **Advanced Filtering:** Category ke alawa price/size based filters.
+
+---
+
 ## Logging In
 
 | Role | Email | Password |

@@ -12,7 +12,7 @@ export default function OrdersPage({ store }) {
       <h1 className="ec-disp" style={s.heading}>My orders</h1>
       {mine.length === 0
         ? <Empty msg="You haven't placed any orders yet." action={<button className="ec-btn ec-btn-primary" onClick={() => go("home")}>Start shopping</button>} />
-        : mine.map((o) => <OrderCard key={o.id} o={o} />)}
+        : mine.map((o) => <OrderCard key={o.id} o={o} onCancel={() => store.cancelOrder(o.id)} />)}
     </div>
   );
 }
