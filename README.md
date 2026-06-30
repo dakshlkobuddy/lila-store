@@ -224,21 +224,27 @@ All migrations are idempotent — safe to re-run.
   About Us, Privacy Policy, Returns & Exchange jaise essential pages header/footer mein proper nav links ke saath jud gaye hain.
 - **Order Tracking & Notifications**  
   Customer profile ke "My Orders" tab mein ek visual tracking progress bar add kiya (Placed -> Shipped -> Out for Delivery -> Delivered). Saath mein, edge functions ko update kiya hai taaki in naye states (aur Cancelled) par proper automated emails bheji jayein.
-
----
-
-## Technical Constraints & Edge Cases
-
-- **Authentication:** `useStore.js` manages local session states. Page refresh pe agar state flush ho jaaye, to user silently log out hota tha — us behaviour ko preserve kiya hai as per requirements. 
-- **Email Limits:** SMTP service configured hai with a 500 emails/day limit. Edge Functions via Resend aur Auth emails usi pipeline se routed hain.
-- **Postgres Enums:** Order statuses ab frontend aur backend (enum `order_status`) mein consistently (Placed, Shipped, Out for Delivery, Delivered, Cancelled) mapped hain.
+- **Cancel Orders & Related Products**  
+  Customers can cancel "Placed" orders securely. The product page now features a dynamic "You may also like" related products grid.
+- **Advanced UI Pagination & Multi-filters**  
+  The homepage includes a "Load More Products" client-side pagination system, along with dynamic Size and Color dropdown filters that adapt to available stock.
+- **Automated Stock Race Refund System**  
+  The Razorpay Edge Function now includes an automated refund system using the Razorpay API to instantly refund users if they successfully pay but the item goes out of stock in the exact same second.
 
 ---
 
 ## Future Scope / Pending
 
-- **Payment Gateway Integration:** Razorpay / Stripe ka UI ready hai, keys add karne baaki hain.
-- **Advanced Filtering:** Category ke alawa price/size based filters.
+- **Coupons & Guest Checkout:** Promo codes for discounts and a guest checkout option for higher conversion rates.
+
+---
+## Technical Constraints & Edge Cases
+
+- **Authentication:** `useStore.js` manages local session states. Page refresh pe agar state flush ho jaaye, to user silently log out hota tha — us behaviour ko preserve kiya hai as per requirements. 
+- **Email Limits:** SMTP service configured hai with a 500 emails/day limit. Edge Functions via Resend aur Auth emails usi pipeline se routed hain.
+- **Postgres Enums:** Order statuses ab frontend aur backend (enum `order_status`) mein consistently (Placed, Shipped, Out for Delivery, Delivered, Cancelled) mapped hain.
+- **Production Razorpay Integration:** The system and Edge Functions are 100% ready for online payments and automated refunds. You only need to add your live Razorpay API Keys to the environment variables to start accepting real money.
+- **Coupons & Guest Checkout:** Promo codes for discounts and a guest checkout option for higher conversion rates.
 
 ---
 
