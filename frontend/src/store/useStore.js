@@ -39,6 +39,8 @@ export default function useStore() {
     });
   }, []);
   const [maxPrice, setMaxPrice] = useState(null);
+  const [sizeFilter, setSizeFilter] = useState("");
+  const [colorFilter, setColorFilter] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   const toastTimer = useRef(null);
@@ -930,10 +932,11 @@ export default function useStore() {
     .filter((p) =>
       (isAdmin || p.is_active) &&
       (cat === "All" || p.category === cat) &&
-      (p.name.toLowerCase().includes(query.toLowerCase()) ||
-        p.category.toLowerCase().includes(query.toLowerCase())) &&
+      (query === "" || p.name.toLowerCase().includes(query.toLowerCase()) || p.category.toLowerCase().includes(query.toLowerCase())) &&
       (!inStockOnly || p.stock > 0) &&
-      (Number(p.price) <= priceCap)
+      (Number(p.price) <= priceCap) &&
+      (sizeFilter === "" || p.sizes?.includes(sizeFilter)) &&
+      (colorFilter === "" || p.colours?.includes(colorFilter))
     )
     .sort((a, b) =>
       sort === "priceAsc"
@@ -948,9 +951,11 @@ export default function useStore() {
     products, orders, users, cart, wishlist, currentUser, loading, route, toast,
     query, cat, menuOpen, adminTab, editingProduct, showForm, lastOrder,
     sort, inStockOnly, maxPrice, showFilters, isDark, showPasswordReset, addresses,
+    sizeFilter, colorFilter,
     // setters
     setQuery, setCat, setMenuOpen, setAdminTab, setEditingProduct, setShowForm,
     setSort, setInStockOnly, setMaxPrice, setShowFilters, setShowPasswordReset,
+    setSizeFilter, setColorFilter,
     // derived
     cartDetailed, cartCount, cartTotal, visibleProducts, isAdmin,
     revenue, lowStock, outStock, priceCeiling, priceCap,
