@@ -149,8 +149,9 @@ Deno.serve(async (req: Request) => {
 
     // ── 3. Cryptographic signature verification ──────────────
     const keySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
-    if (!keySecret) {
-      console.error("RAZORPAY_KEY_SECRET env var not set");
+    const keyId = Deno.env.get("RAZORPAY_KEY_ID");
+    if (!keySecret || !keyId) {
+      console.error("RAZORPAY credentials env vars not set");
       return jsonResponse({ error: "Payment gateway not configured" }, 500);
     }
 
@@ -198,6 +199,33 @@ Deno.serve(async (req: Request) => {
         razorpay_payment_id,
         user_id: user.id,
       });
+
+      // ── Attempt Automatic Refund ─────────────────────────────
+      try {
+        const authStr = "Basic " + btoa(`${keyId}:${keySecret}`);
+        const refundRes = await fetch(`https://api.razorpay.com/v1/payments/${razorpay_payment_id}/refund`, {
+          method: "POST",
+          headers: {
+            "Authorization": authStr,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({}) // empty body triggers a full refund
+        });
+
+        if (refundRes.ok) {
+          console.log(`Successfully auto-refunded payment ${razorpay_payment_id}`);
+          return jsonResponse({
+            error: "Order could not be placed due to stock running out. Your payment has been automatically refunded and will reflect in your account in 5-7 business days."
+          }, 400);
+        } else {
+          const refundData = await refundRes.text();
+          console.error("Razorpay Auto-Refund Failed:", refundData);
+        }
+      } catch (refundErr) {
+        console.error("Razorpay Auto-Refund Exception:", refundErr);
+      }
+
+      // Fallback if auto-refund fails or throws
       return jsonResponse(
         {
           error:
